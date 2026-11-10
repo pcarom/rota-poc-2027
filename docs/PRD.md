@@ -196,7 +196,7 @@ Se trata de una **Prueba de Concepto (PoC)** — la autenticación, autorizació
 | ID | Criterio |
 |----|---------|
 | CA-3.8.1 | **Dada** una rota cargada, **cuando** el usuario abre el panel de estadísticas, **entonces** se muestran los desgloses de horas por médico. |
-| CA-3.8.2 | **Dado** el panel de estadísticas, **entonces** muestra las horas totales, el desglose mensual de horas y los recuentos de turnos por tipo de día para cada médico. El panel de estadísticas tiene un selector AC/AP para mostrar las estadísticas del tipo activo. |
+| CA-3.8.2 | **Dado** el panel de estadísticas, **entonces** muestra las horas totales desglosadas en horas de guardia y de refuerzo, el desglose mensual de horas y los recuentos de turnos por tipo de día para cada médico; el resumen del panel desglosa igual el total de todos los médicos. El panel de estadísticas tiene un selector AC/AP para mostrar las estadísticas del tipo activo. |
 | CA-3.8.3 | **Dado** que el panel de estadísticas está cerrado por defecto, **entonces** se puede alternar entre abierto y cerrado. |
 
 ---

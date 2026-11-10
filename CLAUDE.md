@@ -32,7 +32,7 @@ npm run migration:run
 
 ```bash
 cd frontend
-npx ng test --watch=false       # ejecutar los 175 tests del frontend
+npx ng test --watch=false       # ejecutar los 177 tests del frontend
 npx ng build                    # build de producción
 npx ng serve --port 4200 --proxy-config src/proxy.conf.json  # servidor de desarrollo
 ```
@@ -77,8 +77,8 @@ Variables de entorno (backend). Sin Docker, `cp backend/.env.example backend/.en
 
 ## Pruebas
 
-- Backend: `npm test` — cobertura unitaria y e2e con Jest desde `backend/test/` (214 tests actualmente)
-- Frontend: `vitest` — 175 tests cubriendo servicios, componentes y la integración del app shell
+- Backend: `npm test` — cobertura unitaria y e2e con Jest desde `backend/test/` (218 tests actualmente)
+- Frontend: `vitest` — 177 tests cubriendo servicios, componentes y la integración del app shell
 - Todos los criterios de aceptación del PRD tienen casos de prueba correspondientes (ver docs/IMPLEMENTATION.md sección 4.4)
 - Las pruebas deben escribirse ANTES de la implementación (enfoque ATDD)
 
@@ -96,7 +96,7 @@ Una PR no se mezcla con la CI en rojo. La CI **no** sustituye a la verificación
 ## Verificación Visual (obligatoria antes del commit)
 
 Las builds y los tests no ven la aplicación. Un cambio puede compilar, pasar los
-389 tests y aun así llegar roto al usuario: texto desbordado, una cadena que
+395 tests y aun así llegar roto al usuario: texto desbordado, una cadena que
 ningún test comprueba, un mensaje que la librería genera en inglés. Por eso, todo
 cambio que toque algo visible para el usuario —frontend, o mensajes del backend,
 que llegan literalmente a la interfaz vía `extractErrorMessage` en
@@ -135,7 +135,7 @@ pantallas, haciendo captura de cada una:
 
 1. **Carga inicial sin cuadrante** — cabecera, banner de aviso, grupo de médicos, calendario vacío
 2. **Generar** los cuadrantes (un único botón para AC y AP) — notificación de éxito, calendario poblado con bloques AC / AP / REFUERZO, prefijo `R:` en los refuerzos y `(AC)` en los que cubre un AC; festivos especiales con estrella
-3. **Panel de estadísticas** — etiquetas, totales, insignias Lab/Sáb/Fest
+3. **Panel de estadísticas** — por médico, fila «Guardias» | «Refuerzos» | «Total» y fila «Objetivo» | mes actual | «Desviación»; en el resumen, «Horas de guardia», «Horas de refuerzo» y «Horas totales»; insignias Lab/Sáb/Fest
 4. **Diálogos** — confirmación de regeneración, añadir médico al grupo, añadir o sustituir médico (al soltar un médico sobre un día)
    y, en el desplegable de equipo, nuevo equipo, renombrar (con un nombre repetido) y borrar equipo
    - **Cargar lista** con un fichero CSV o JSON válido (confirmación) y con uno inválido (error en español); cambiar de equipo y comprobar que lista y cuadrantes son los suyos

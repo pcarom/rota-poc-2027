@@ -7,6 +7,8 @@ export function calculateStats(
 ): DoctorStats[] {
   const doctorMap = new Map(pool.map((doctor) => [doctor.id, doctor]));
 
+  const guardiaHours: Record<string, number> = {};
+  const refuerzoHours: Record<string, number> = {};
   const totalHours: Record<string, number> = {};
   const monthlyHours: Record<string, Record<string, number>> = {};
   const shiftsWeekday: Record<string, number> = {};
@@ -15,6 +17,8 @@ export function calculateStats(
   const shiftsRefuerzo: Record<string, number> = {};
 
   for (const doctor of pool) {
+    guardiaHours[doctor.id] = 0;
+    refuerzoHours[doctor.id] = 0;
     totalHours[doctor.id] = 0;
     monthlyHours[doctor.id] = {};
     shiftsWeekday[doctor.id] = 0;
@@ -38,7 +42,10 @@ export function calculateStats(
       monthlyHours[doctor.doctorId][month] =
         (monthlyHours[doctor.doctorId][month] ?? 0) + hours;
       if (doctor.role === 'refuerzo') {
+        refuerzoHours[doctor.doctorId] += hours;
         shiftsRefuerzo[doctor.doctorId] += 1;
+      } else {
+        guardiaHours[doctor.doctorId] += hours;
       }
 
       if (day.dayType === 'weekday') {
@@ -56,6 +63,8 @@ export function calculateStats(
     return {
       doctorId: doctor.id,
       doctorName: doctor.name,
+      guardiaHours: guardiaHours[doctor.id],
+      refuerzoHours: refuerzoHours[doctor.id],
       totalHours: totalHours[doctor.id],
       targetHours: target,
       hoursVsTarget: totalHours[doctor.id] - target,

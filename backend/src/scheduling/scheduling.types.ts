@@ -45,6 +45,9 @@ export interface DayAssignment extends DayInfo {
 export interface DoctorStats {
   doctorId: string;
   doctorName: string;
+  // guardiaHours + refuerzoHours === totalHours siempre.
+  guardiaHours: number;
+  refuerzoHours: number;
   totalHours: number;
   targetHours: number;
   hoursVsTarget: number;

@@ -94,6 +94,19 @@ describe('HTTP contract', () => {
     expect(allRotas.json().map((rota: { rota_type: string }) => rota.rota_type)).toEqual(['AC', 'AP']);
   });
 
+  it('las estadísticas de cada médico desglosan las horas de guardia y de refuerzo', async () => {
+    const [ac, ap] = (await generate()).json();
+
+    for (const rota of [ac, ap]) {
+      expect(rota.stats.doctors.length).toBeGreaterThan(0);
+      for (const doctor of rota.stats.doctors) {
+        expect(typeof doctor.guardia_hours).toBe('number');
+        expect(typeof doctor.refuerzo_hours).toBe('number');
+        expect(doctor.guardia_hours + doctor.refuerzo_hours).toBe(doctor.total_hours);
+      }
+    }
+  });
+
   it('cada día devuelve una guardia AC, una guardia AP y sus refuerzos con su papel', async () => {
     const [ac, ap] = (await generate()).json();
     const acDays = byDate(ac.schedule);

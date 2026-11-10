@@ -10,6 +10,8 @@ describe('StatsPanelComponent', () => {
     {
       doctor_id: 'doc-001',
       doctor_name: 'Dr. Garcia',
+      guardia_hours: 1500,
+      refuerzo_hours: 150,
       total_hours: 1650,
       monthly_hours: { 1: 140, 2: 130 },
       shifts_weekday: 20,
@@ -19,6 +21,8 @@ describe('StatsPanelComponent', () => {
     {
       doctor_id: 'doc-002',
       doctor_name: 'Dr. Lopez',
+      guardia_hours: 1480,
+      refuerzo_hours: 160,
       total_hours: 1640,
       monthly_hours: { 1: 138, 2: 132 },
       shifts_weekday: 19,
@@ -136,6 +140,8 @@ describe('StatsPanelComponent', () => {
       {
         doctor_id: 'doc-001',
         doctor_name: 'Dr. Garcia',
+        guardia_hours: 1650,
+        refuerzo_hours: 150,
         total_hours: 1800,
         monthly_hours: { 1: 160 },
         shifts_weekday: 22,
@@ -145,6 +151,8 @@ describe('StatsPanelComponent', () => {
       {
         doctor_id: 'doc-002',
         doctor_name: 'Dr. Lopez',
+        guardia_hours: 1380,
+        refuerzo_hours: 120,
         total_hours: 1500,
         monthly_hours: { 1: 135 },
         shifts_weekday: 16,
@@ -184,6 +192,26 @@ describe('StatsPanelComponent', () => {
     expect(summaryText).toContain('3290');
     // Average hours: 3290 / 2 = 1645
     expect(summaryText).toContain('1645');
+  });
+
+  it('el resumen desglosa las horas de guardia y de refuerzo de todos los médicos', () => {
+    fixture.componentRef.setInput('visible', true);
+    fixture.componentRef.setInput('stats', mockStats);
+    fixture.detectChanges();
+
+    const summaryEl = fixture.nativeElement.querySelector('.stats-summary');
+    const labels = Array.from(summaryEl.querySelectorAll('.summary-label')).map((el: any) =>
+      el.textContent.trim(),
+    );
+    expect(labels).toContain('Horas de guardia');
+    expect(labels).toContain('Horas de refuerzo');
+    expect(labels).toContain('Horas totales');
+
+    const summaryText = summaryEl.textContent;
+    // Guardia: 1500 + 1480 = 2980; refuerzo: 150 + 160 = 310; total: 1650 + 1640 = 3290
+    expect(summaryText).toContain('2980');
+    expect(summaryText).toContain('310');
+    expect(summaryText).toContain('3290');
   });
 
   it('should show header with active tab in title', () => {
@@ -236,6 +264,8 @@ describe('StatsPanelComponent', () => {
       {
         doctor_id: 'doc-001',
         doctor_name: 'Dr. Personalizado',
+        guardia_hours: 1100,
+        refuerzo_hours: 100,
         total_hours: 1200,
         target_hours: 1180,
         hours_vs_target: 20,
@@ -247,6 +277,8 @@ describe('StatsPanelComponent', () => {
       {
         doctor_id: 'doc-002',
         doctor_name: 'Dr. Completo',
+        guardia_hours: 1500,
+        refuerzo_hours: 155,
         total_hours: 1655,
         target_hours: 1620,
         hours_vs_target: 35,
@@ -270,6 +302,8 @@ describe('StatsPanelComponent', () => {
       {
         doctor_id: 'doc-001',
         doctor_name: 'Dr. Sobrecargado',
+        guardia_hours: 1700,
+        refuerzo_hours: 150,
         total_hours: 1850,
         target_hours: 1620,
         hours_vs_target: 230,
@@ -281,6 +315,8 @@ describe('StatsPanelComponent', () => {
       {
         doctor_id: 'doc-002',
         doctor_name: 'Dr. Aliviado',
+        guardia_hours: 1490,
+        refuerzo_hours: 135,
         total_hours: 1625,
         target_hours: 1620,
         hours_vs_target: 5,

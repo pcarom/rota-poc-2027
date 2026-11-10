@@ -26,6 +26,14 @@ import { RotaType } from '../../core/models/doctor.model';
         }
         <div class="stats-summary">
           <div class="summary-row">
+            <span class="summary-label">Horas de guardia</span>
+            <span class="summary-value">{{ totalGuardiaHours() }}h</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">Horas de refuerzo</span>
+            <span class="summary-value">{{ totalRefuerzoHours() }}h</span>
+          </div>
+          <div class="summary-row">
             <span class="summary-label">Horas totales</span>
             <span class="summary-value">{{ totalHours() }}h</span>
           </div>
@@ -229,6 +237,14 @@ export class StatsPanelComponent {
     if (denominator === 0) return false;
     return (spread / denominator) > 0.10;
   });
+
+  readonly totalGuardiaHours = computed(() =>
+    this.stats().reduce((sum, d) => sum + d.guardia_hours, 0),
+  );
+
+  readonly totalRefuerzoHours = computed(() =>
+    this.stats().reduce((sum, d) => sum + d.refuerzo_hours, 0),
+  );
 
   readonly totalHours = computed(() =>
     this.stats().reduce((sum, d) => sum + d.total_hours, 0),
