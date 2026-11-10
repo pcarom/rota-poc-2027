@@ -83,7 +83,7 @@ describe('Assignment domain', () => {
 
 describe('AP rota — guardia AP y refuerzos del día', () => {
   const isoDate = (day: { date: Date }) => day.date.toISOString().slice(0, 10);
-  const refuerzos = (day: { doctors: { role?: string }[] }) =>
+  const refuerzos = (day: { doctors: { role?: string; durationHours?: number }[] }) =>
     day.doctors.filter((doctor) => doctor.role === 'refuerzo');
   const guardias = (day: { doctors: { role?: string }[] }) =>
     day.doctors.filter((doctor) => doctor.role !== 'refuerzo');
@@ -105,28 +105,38 @@ describe('AP rota — guardia AP y refuerzos del día', () => {
 
   const dayClassifications = classifyYear(YEAR_2026, toHolidaySet(HOLIDAYS_2026));
 
-  it('asigna turnos AP de 7h en laborables y sábados (15:00–22:00)', () => {
+  // La guardia AP ya no comparte horario con el refuerzo: antes de 2027 coincide con la
+  // guardia AC (17h laborable, 18h sábado, 23h festivo); el refuerzo sigue en 7h/12h
+  // (comprobado en `pone dos/un refuerzo...` y en `generateRotas 2026 — la guardia AP
+  // coincide con la guardia AC`).
+  it('asigna la guardia AP de 17h laborable y 18h sábado, igual que la AC', () => {
     const rota = generateRota(YEAR_2026, 'AP', AP_POOL_8, dayClassifications);
-    const nonHolidayDays = rota.schedule.filter((day) => day.dayType !== 'holiday');
+    const weekdays = rota.schedule.filter((day) => day.dayType === 'weekday');
+    const saturdays = rota.schedule.filter((day) => day.dayType === 'saturday');
 
-    expect(nonHolidayDays.length).toBeGreaterThan(0);
+    expect(weekdays.length).toBeGreaterThan(0);
+    expect(saturdays.length).toBeGreaterThan(0);
     expect(
-      nonHolidayDays.every(
-        (day) =>
-          day.durationHours === 7 && day.shiftStart === '15:00' && day.shiftEnd === '22:00',
+      weekdays.every(
+        (day) => day.durationHours === 17 && day.shiftStart === '15:00' && day.shiftEnd === '08:00+1',
+      ),
+    ).toBe(true);
+    expect(
+      saturdays.every(
+        (day) => day.durationHours === 18 && day.shiftStart === '15:00' && day.shiftEnd === '09:00+1',
       ),
     ).toBe(true);
   });
 
-  it('aplica turnos AP de 12h en todos los festivos (10:00–22:00)', () => {
+  it('aplica la guardia AP de 23h en todos los festivos (09:00–08:00+1), igual que la AC', () => {
     const rota = generateRota(YEAR_2026, 'AP', AP_POOL_8, dayClassifications);
     const holidayDays = rota.schedule.filter((day) => day.dayType === 'holiday');
 
     expect(holidayDays.length).toBeGreaterThan(0);
     for (const day of holidayDays) {
-      expect(day.durationHours).toBe(12);
-      expect(day.shiftStart).toBe('10:00');
-      expect(day.shiftEnd).toBe('22:00');
+      expect(day.durationHours).toBe(23);
+      expect(day.shiftStart).toBe('09:00');
+      expect(day.shiftEnd).toBe('08:00+1');
     }
   });
 
@@ -165,8 +175,13 @@ describe('AP rota — guardia AP y refuerzos del día', () => {
 
     for (const date of ['2026-01-01', '2026-01-06', '2026-12-24', '2026-12-25', '2026-12-31']) {
       expect(byDate.get(date)?.dayType).toBe('holiday');
-      expect(byDate.get(date)?.durationHours).toBe(12);
-      expect(refuerzos(byDate.get(date)!)).toHaveLength(2);
+      // Guardia AP (como la AC): 23h. El refuerzo, 12h (comprobado más abajo).
+      expect(byDate.get(date)?.durationHours).toBe(23);
+      const refuerzosDelDia = refuerzos(byDate.get(date)!);
+      expect(refuerzosDelDia).toHaveLength(2);
+      for (const refuerzo of refuerzosDelDia) {
+        expect(refuerzo.durationHours).toBe(12);
+      }
     }
   });
 
@@ -183,14 +198,29 @@ describe('AP rota — guardia AP y refuerzos del día', () => {
     expect(refuerzos(byDate.get('2021-01-04')!)).toHaveLength(1);
   });
 
-  it('los AP no superan las 425h anuales con el grupo real de 17', () => {
+  // Antes de corregir el horario de la guardia AP (usaba el de refuerzo, 7h/12h, un error
+  // histórico) el grupo real de 17 nunca superaba las 425h/año. Con la guardia AP igual
+  // que la AC (17h/18h/23h) ese mismo grupo ya no basta: el cuadrante se genera igual
+  // (restricción blanda) pero con el aviso de grupo demasiado pequeño.
+  it('con el grupo real de 17, la guardia AP corregida hace que el cuadrante avise de superar las 425h', () => {
     const rota = generateRota(YEAR_2026, 'AP', AP_POOL_17, dayClassifications);
 
-    expect(rota.warnings).toEqual([]);
-    for (const doctor of rota.stats.doctors) {
-      expect(doctor.totalHours).toBeLessThanOrEqual(425);
-      expect(doctor.targetHours).toBe(425);
-    }
+    const capacity = rota.schedule.reduce(
+      (sum, day) =>
+        sum +
+        day.doctors.reduce((total, doctor) => total + (doctor.durationHours ?? day.durationHours), 0),
+      0,
+    );
+    const excesses = rota.stats.doctors.map((doctor) => Math.max(0, doctor.totalHours - doctor.targetHours));
+    const excessHours = excesses.reduce((sum, value) => sum + value, 0);
+    expect(excessHours).toBe(capacity - 17 * 425);
+
+    expect(rota.warnings).toHaveLength(1);
+    expect(rota.warnings[0]).toMatch(/demasiado pequeño para AP/);
+    expect(rota.warnings[0]).toContain(`${capacity}h`);
+    expect(rota.warnings[0]).toContain(`al menos ${Math.ceil(capacity / 425)} médicos`);
+    expect(rota.warnings[0]).toContain('17 médicos quedan por encima del máximo de 425h');
+    expect(rota.warnings[0]).toContain(`sobran ${excessHours}h en total`);
     expect(rota.doctorsPerDay).toBe(1);
   });
 
@@ -210,7 +240,15 @@ describe('AP rota — guardia AP y refuerzos del día', () => {
     const rota = generateRota(YEAR_2026, 'AP', AP_POOL_8, dayClassifications);
 
     expect(rota.schedule).toHaveLength(365);
-    const capacity = rota.schedule.reduce((sum, day) => sum + day.durationHours * day.doctors.length, 0);
+    // Suma por médico (`durationHours` propio del refuerzo, si no el de la guardia del
+    // día): con la guardia AP y el refuerzo en horarios distintos, `day.durationHours *
+    // day.doctors.length` ya no vale (contaría el refuerzo con las horas de la guardia).
+    const capacity = rota.schedule.reduce(
+      (sum, day) =>
+        sum +
+        day.doctors.reduce((total, doctor) => total + (doctor.durationHours ?? day.durationHours), 0),
+      0,
+    );
     const excesses = rota.stats.doctors.map((doctor) =>
       Math.max(0, doctor.totalHours - doctor.targetHours),
     );
@@ -378,8 +416,74 @@ describe('generateRotas — AC y AP en una sola generación', () => {
     expect(rotas.ac.strategy).toBe('wheels');
     expect(rotas.ap.strategy).toBe('wheels');
     expect(rotas.ac.warnings).toEqual([]);
-    expect(rotas.ap.warnings).toEqual([]);
+    // El grupo real de 17 AP supera las 425h/año con la guardia AP corregida (ver
+    // «con el grupo real de 17 ...» más arriba); aquí sólo se comprueba que ruedas
+    // también genera el cuadrante con ese mismo aviso, no una excepción.
+    expect(rotas.ap.warnings).toHaveLength(1);
+    expect(rotas.ap.warnings[0]).toMatch(/demasiado pequeño para AP/);
   });
+});
+
+describe('generateRotas 2026 — la guardia AP coincide con la guardia AC', () => {
+  const dayClassifications = classifyYear(YEAR_2026, toHolidaySet(HOLIDAYS_2026));
+
+  it.each(['single-wheel', 'wheels'] as const)(
+    'la guardia AP tiene las mismas horas e inicio/fin que la AC: 17h laborable, 18h sábado, 23h festivo (%s)',
+    (strategy) => {
+      const { ac, ap } = generateRotas(YEAR_2026, AC_POOL_4, AP_POOL_17, dayClassifications, undefined, strategy);
+      const acByDate = new Map(ac.schedule.map((day) => [toIsoDate(day.date), day]));
+      const apByDate = new Map(ap.schedule.map((day) => [toIsoDate(day.date), day]));
+
+      for (const day of dayClassifications) {
+        const date = toIsoDate(day.date);
+        const acDay = acByDate.get(date)!;
+        const apDay = apByDate.get(date)!;
+
+        // La guardia AP ya no se transforma: comparte horas e inicio/fin con la AC.
+        expect(apDay.durationHours).toBe(acDay.durationHours);
+        expect(apDay.shiftStart).toBe(acDay.shiftStart);
+        expect(apDay.shiftEnd).toBe(acDay.shiftEnd);
+
+        if (day.dayType === 'holiday') {
+          expect(acDay.durationHours).toBe(23);
+        } else if (day.dayType === 'saturday') {
+          expect(acDay.durationHours).toBe(18);
+        } else {
+          expect(acDay.durationHours).toBe(17);
+        }
+      }
+    },
+  );
+
+  it.each(['single-wheel', 'wheels'] as const)(
+    'los refuerzos de 2026 siguen con 7h laborable/sábado y 12h festivo, 1 por sábado normal (%s)',
+    (strategy) => {
+      const { ac, ap } = generateRotas(YEAR_2026, AC_POOL_4, AP_POOL_17, dayClassifications, undefined, strategy);
+      const acByDate = new Map(ac.schedule.map((day) => [toIsoDate(day.date), day]));
+      const apByDate = new Map(ap.schedule.map((day) => [toIsoDate(day.date), day]));
+
+      for (const day of [...ac.schedule, ...ap.schedule]) {
+        for (const refuerzo of day.doctors.filter((doctor) => doctor.role === 'refuerzo')) {
+          const expectedHours = day.dayType === 'holiday' ? 12 : 7;
+          expect(refuerzo.durationHours).toBe(expectedHours);
+          expect(refuerzo.shiftStart).toBe(expectedHours === 12 ? '10:00' : '15:00');
+          expect(refuerzo.shiftEnd).toBe('22:00');
+        }
+      }
+
+      // Sin la regla de 2027, un sábado normal (no festivo) sigue llevando un único refuerzo.
+      for (const day of dayClassifications) {
+        if (day.dayType !== 'saturday') {
+          continue;
+        }
+        const date = toIsoDate(day.date);
+        const refuerzos =
+          acByDate.get(date)!.doctors.filter((doctor) => doctor.role === 'refuerzo').length +
+          apByDate.get(date)!.doctors.filter((doctor) => doctor.role === 'refuerzo').length;
+        expect(refuerzos).toBe(1);
+      }
+    },
+  );
 });
 
 describe('generateRotas 2027 — horarios nuevos', () => {

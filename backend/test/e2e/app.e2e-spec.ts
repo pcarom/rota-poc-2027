@@ -84,7 +84,11 @@ describe('HTTP contract', () => {
     expect(ac.stats.doctors).toHaveLength(4);
     expect(ap.stats.doctors).toHaveLength(AP_POOL_17.length);
     expect(ac.warnings).toEqual([]);
-    expect(ap.warnings).toEqual([]);
+    // El grupo real de 17 AP supera las 425h/año con la guardia AP corregida (antes
+    // usaba por error el horario del refuerzo, 7h/12h); el cuadrante se genera igual,
+    // con ese aviso (restricción blanda).
+    expect(ap.warnings).toHaveLength(1);
+    expect(ap.warnings[0]).toMatch(/demasiado pequeño para AP/);
 
     const allRotas = await app.inject({ method: 'GET', url: '/api/v1/rota/2026' });
     expect(allRotas.json().map((rota: { rota_type: string }) => rota.rota_type)).toEqual(['AC', 'AP']);
@@ -114,10 +118,11 @@ describe('HTTP contract', () => {
     }
     expect(withRole(apDays.get('2026-08-15'), 'refuerzo')).toHaveLength(1);
 
+    // La guardia AP (como la AC): 23h, 09:00 a 08:00+1.
     const holiday = apDays.get('2026-08-16')!;
-    expect(holiday.duration_hours).toBe(12);
-    expect(holiday.shift_start).toBe('10:00');
-    expect(holiday.shift_end).toBe('22:00');
+    expect(holiday.duration_hours).toBe(23);
+    expect(holiday.shift_start).toBe('09:00');
+    expect(holiday.shift_end).toBe('08:00+1');
   });
 
   it('el refuerzo de un AC conserva el horario de la guardia AC del día y suma horas AP', async () => {
@@ -432,15 +437,18 @@ describe('HTTP contract', () => {
     expect(refuerzos).toBe(2);
   });
 
-  it('aplica turnos AP de 7h en laborables y sábados (15:00–22:00)', async () => {
+  it('la guardia AP es de 17h laborable y 18h sábado, igual que la AC', async () => {
     const [, ap] = (await generate()).json();
 
-    const nonHoliday = (ap.schedule as ApiDay[]).find(
-      (day) => day.day_type === 'weekday' || day.day_type === 'saturday',
-    )!;
-    expect(nonHoliday.duration_hours).toBe(7);
-    expect(nonHoliday.shift_start).toBe('15:00');
-    expect(nonHoliday.shift_end).toBe('22:00');
+    const weekday = (ap.schedule as ApiDay[]).find((day) => day.day_type === 'weekday')!;
+    expect(weekday.duration_hours).toBe(17);
+    expect(weekday.shift_start).toBe('15:00');
+    expect(weekday.shift_end).toBe('08:00+1');
+
+    const saturday = (ap.schedule as ApiDay[]).find((day) => day.day_type === 'saturday')!;
+    expect(saturday.duration_hours).toBe(18);
+    expect(saturday.shift_start).toBe('15:00');
+    expect(saturday.shift_end).toBe('09:00+1');
   });
 
   describe('horarios 2027: guardia única AC/AP y refuerzos propios', () => {

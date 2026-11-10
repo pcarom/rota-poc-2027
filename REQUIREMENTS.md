@@ -17,26 +17,28 @@ Un médico pertenece a un único grupo (AC o AP) y nunca participa en la rota de
 
 ## 3. Reglas de cobertura diaria
 
-- **Cada día** debe haber, como mínimo, **1 AC** asignado y **1 AP** asignado.
-- **En festivos** (incluye domingos clasificados como festivos por la regulación) el AP hace un turno de **12 h** (10:00 a 22:00).
-- **Cuando hay dos festivos consecutivos**, el **segundo** lleva **2 AP** (12 h cada uno). El primer festivo de la serie y los festivos aislados llevan 1 AP.
+- **Cada día** debe haber, como mínimo, **1 AC de guardia** y **1 AP de guardia**, más el refuerzo del día (de AP, salvo el que cubre un AC).
+- **En festivos** (incluye domingos clasificados como festivos por la regulación) el refuerzo hace un turno de **12 h** (10:00 a 22:00); la guardia, igual para AC y AP, tiene su propio horario de festivo (ver sección 4).
+- **Cuando hay dos festivos consecutivos**, el **segundo** lleva **2 refuerzos** (12 h cada uno). El primer festivo de la serie y los festivos aislados llevan 1 refuerzo.
 - **Desde 2027**, **todos los sábados** llevan **2 refuerzos** de 12 h (también si el sábado es festivo). Nunca hay más de 2.
 
 ## 4. Duraciones de turno por rota y tipo de día
 
-Hasta 2026:
+Hasta 2026, la guardia ya era la misma para AC y AP; el refuerzo (lo haga un AP o, si le faltan horas en el mes, un AC) tiene su propio horario, que nunca coincide con el de la guardia del día:
 
-| Rota / rol            | Laborable             | Sábado                | Festivo / Domingo     |
-|-----------------------|-----------------------|-----------------------|-----------------------|
-| AC (primary)          | 17 h (15:00–08:00+1)  | 18 h (15:00–09:00+1)  | 23 h (09:00–08:00+1)  |
-| AP (refuerzo del día) | 7 h (15:00–22:00)     | 7 h (15:00–22:00)     | 12 h (10:00–22:00); × 2 en el segundo festivo consecutivo |
+| Rol               | Laborable             | Sábado                | Festivo / Domingo     |
+|-------------------|-----------------------|-----------------------|-----------------------|
+| Guardia (AC y AP) | 17 h (15:00–08:00+1)  | 18 h (15:00–09:00+1)  | 23 h (09:00–08:00+1)  |
+| Refuerzo          | 7 h (15:00–22:00)     | 7 h (15:00–22:00)     | 12 h (10:00–22:00); × 2 en el segundo festivo consecutivo |
 
-Desde 2027 la guardia es la misma para AC y AP, y los refuerzos (los haga un AP o un AC) tienen su propio horario. Un sábado festivo mantiene el horario de sábado; un festivo de lunes a viernes tiene el de domingo.
+Desde 2027 la guardia sigue siendo la misma para AC y AP, pero con horas distintas por tipo de día; los refuerzos (los haga un AP o un AC) mantienen su propio horario. Un sábado festivo mantiene el horario de sábado; un festivo de lunes a viernes tiene el de domingo.
 
 | Rol      | Lunes a jueves        | Viernes               | Sábado                                  | Domingo / Festivo     |
 |----------|-----------------------|-----------------------|-----------------------------------------|-----------------------|
 | Guardia  | 17 h (15:00–08:00+1)  | 18 h (15:00–09:00+1)  | 24 h (09:00–09:00+1)                    | 23 h (09:00–08:00+1)  |
 | Refuerzo | 7 h (15:00–22:00)     | 7 h (15:00–22:00)     | 12 h (10:00–22:00); siempre 2 refuerzos | 12 h (10:00–22:00); × 2 en el segundo festivo consecutivo |
+
+Sin migración de datos: un cuadrante generado antes de un cambio de horario conserva las horas con las que se generó hasta que se regenera.
 
 ## 5. Restricciones (validadas por el algoritmo)
 

@@ -1,6 +1,6 @@
 import { RotaType } from './doctor.model';
 
-/** Guardia: plaza principal del grupo. Refuerzo: plaza adicional con horario de refuerzo (hasta 2026, el de la guardia AP). */
+/** Guardia: plaza principal del grupo. Refuerzo: plaza adicional con su propio horario de refuerzo, que nunca coincide con el de la guardia del día. */
 export type ShiftRole = 'guardia' | 'refuerzo';
 
 export interface DoctorRef {

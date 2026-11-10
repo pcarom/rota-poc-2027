@@ -91,7 +91,12 @@ describe('generateRotas — barajado del grupo antes de asignar', () => {
       );
 
       expect(ac.warnings).toEqual([]);
-      expect(ap.warnings).toEqual([]);
+      // El grupo real de 17 AP supera las 425h/año con la guardia AP corregida (era
+      // 7h/12h, el horario del refuerzo, por error) sea cual sea el orden barajado:
+      // el aviso de grupo demasiado pequeño no depende del barajado, sólo las reglas
+      // de más abajo (horas mínimas AC, descanso AP).
+      expect(ap.warnings).toHaveLength(1);
+      expect(ap.warnings[0]).toMatch(/demasiado pequeño para AP/);
       for (const doctor of ac.stats.doctors) {
         for (let month = 1; month <= 12; month += 1) {
           expect(doctor.monthlyHours[String(month)]).toBeGreaterThanOrEqual(135);

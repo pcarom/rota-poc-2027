@@ -7,7 +7,7 @@ import {
   continuePoolOrder,
 } from './continuation';
 import { InfeasiblePoolError } from './errors';
-import { SATURDAY_WEEKDAY, effectiveDayInfo, refuerzoShiftDetails, usesShifts2027 } from './shifts';
+import { SATURDAY_WEEKDAY, refuerzoShiftDetails, usesShifts2027 } from './shifts';
 import { RandomSource, shuffle } from './shuffle';
 import { calculateStats } from './stats.service';
 import {
@@ -116,13 +116,11 @@ function assignRota(
   previous?: PreviousYearRota,
   previousDays: DayInfo[] = [],
 ): AssignedRota {
-  const effectiveDays = dayClassifications.map((day) => effectiveDayInfo(rotaType, day));
-
   if (pool.length < 1) {
     throw new InfeasiblePoolError(`El grupo debe tener al menos 1 médico (tiene ${pool.length}).`);
   }
 
-  const refuerzosByDay = effectiveDays.map((day, index) =>
+  const refuerzosByDay = dayClassifications.map((day, index) =>
     rotaType === 'AP'
       ? Math.max(
           0,
@@ -152,21 +150,21 @@ function assignRota(
       : undefined;
   const assigned = getAssignmentStrategy(strategyId).assign({
     pool: orderedPool,
-    days: effectiveDays,
+    days: dayClassifications,
     requiredByDay,
     refuerzosByDay,
     continuation,
   });
-  const schedule: DayAssignment[] = effectiveDays.map((dayInfo, index) => {
+  const schedule: DayAssignment[] = dayClassifications.map((dayInfo, index) => {
     const guardias = requiredByDay[index] - refuerzosByDay[index];
     return {
       ...dayInfo,
       doctors: assigned[index].map((doctor, position) => {
         const role: ShiftRole = position < guardias ? 'guardia' : 'refuerzo';
-        // El refuerzo siempre lleva su propio horario: antes de 2027 coincide con el de
-        // la guardia AP del día, pero desde 2027 la guardia y el refuerzo se separan
-        // (p. ej. sábado 24h de guardia pero 12h de refuerzo), así que sin este horario
-        // propio el refuerzo heredaría el de la guardia del día.
+        // El refuerzo siempre lleva su propio horario: la guardia del día y el refuerzo
+        // nunca comparten horario (p. ej. sábado desde 2027, 24h de guardia pero 12h de
+        // refuerzo), así que sin este horario propio el refuerzo heredaría el de la
+        // guardia del día.
         const refuerzoShift =
           role === 'refuerzo' ? refuerzoShiftDetails(dayInfo.date, dayInfo.dayType) : undefined;
         return {

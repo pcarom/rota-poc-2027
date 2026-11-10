@@ -123,7 +123,7 @@ describe('Exportación del cuadrante a Excel', () => {
     expect(cuadrante.rowCount).toBe(366);
   });
 
-  it('la primera fila es el 1 de enero: festivo especial, 23 h AC, 12 h AP y dos refuerzos; un laborable lleva uno', async () => {
+  it('la primera fila es el 1 de enero: festivo especial, 23 h de guardia en AC y AP, 12 h de refuerzo y dos refuerzos; un laborable lleva uno', async () => {
     await generar();
 
     const workbook = await cargarLibro((await exportar()).rawPayload);
@@ -139,8 +139,9 @@ describe('Exportación del cuadrante a Excel', () => {
     expect(fila.getCell(5).value).toBe('09:00–08:00+1');
     expect(fila.getCell(6).value).toBe(23);
     expect(String(fila.getCell(7).value).split(', ')).toHaveLength(1);
-    expect(fila.getCell(8).value).toBe('10:00–22:00');
-    expect(fila.getCell(9).value).toBe(12);
+    // La guardia AP ya no comparte horario con el refuerzo: coincide con la AC.
+    expect(fila.getCell(8).value).toBe('09:00–08:00+1');
+    expect(fila.getCell(9).value).toBe(23);
     expect(String(fila.getCell(10).value).split(', ')).toHaveLength(2);
     expect(fila.getCell(11).value).toBe('10:00–22:00');
     expect(fila.getCell(12).value).toBe(12);

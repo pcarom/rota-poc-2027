@@ -4,10 +4,10 @@
 
 El algoritmo de planificación genera de una vez los dos cuadrantes del año, **AC y AP**, con grupos de médicos separados (`generateRotas`). Cada día tiene:
 
-- **1 guardia AC** (grupo AC) y **1 guardia AP** (grupo AP): hasta 2026 cada una con su propio horario (la de AC, la del día calendario; la de AP, la del refuerzo); desde 2027 (`SHIFTS_2027_FROM_YEAR`, `scheduling/shifts.ts`) ambas comparten el mismo horario de guardia (`guardiaShiftDetails`).
-- **1 refuerzo**, o **2** en un festivo especial de sanidad (24, 25 y 31 dic, 1 y 6 ene), en un festivo precedido de otro festivo o, desde 2027, en cualquier sábado (sea festivo o no). El refuerzo tiene su propio horario (`refuerzoShiftDetails`) y lo cubre el grupo AP, salvo los que necesita un AC para llegar a sus horas del mes.
+- **1 guardia AC** (grupo AC) y **1 guardia AP** (grupo AP), siempre con el mismo horario (`guardiaShiftDetails`, `scheduling/shifts.ts`), hasta 2026 y desde 2027; sólo cambian las horas por tipo de día desde 2027 (`SHIFTS_2027_FROM_YEAR`).
+- **1 refuerzo**, o **2** en un festivo especial de sanidad (24, 25 y 31 dic, 1 y 6 ene), en un festivo precedido de otro festivo o, desde 2027, en cualquier sábado (sea festivo o no). El refuerzo tiene su propio horario (`refuerzoShiftDetails`), distinto del de la guardia del día, y lo cubre el grupo AP, salvo los que necesita un AC para llegar a sus horas del mes.
 
-Para **AC**, cada médico debe llegar a **135h cada mes** (1.620h/año). Para **AP**, cada médico tiene un **máximo de 425h/año**; con la guardia AP más larga desde 2027, es más fácil superarlo y el aviso blando existente (paso 5) salta con más frecuencia. Hasta 2026, la guardia AP y los refuerzos duran 7 h (15:00–22:00) de lunes a sábado y 12 h (10:00–22:00) en festivo; desde 2027, la guardia (AC y AP) y el refuerzo tienen horarios propios y distintos (ver «Tipos de Día y Duraciones»).
+Para **AC**, cada médico debe llegar a **135h cada mes** (1.620h/año). Para **AP**, cada médico tiene un **máximo de 425h/año**; con la guardia AP tan larga como la de AC, el aviso blando existente (paso 5) salta con pools realistas (ver el ejemplo del grupo real de 17 más abajo). Hasta 2026, la guardia (AC y AP) dura 17h laborable, 18h sábado y 23h festivo, y el refuerzo 7h (15:00–22:00) de lunes a sábado y 12h (10:00–22:00) en festivo; desde 2027, la guardia y el refuerzo tienen horas propias y distintas por tipo de día (ver «Tipos de Día y Duraciones»).
 
 ---
 
@@ -61,7 +61,7 @@ Tras asignar las guardias AC, para cada mes se ordenan los AC por horas que les 
 - no tiene ya una asignación ese día ni el anterior (no es su día de descanso);
 - ese día aún queda un refuerzo libre (`refuerzosForDay`).
 
-Cada refuerzo suma las horas AP del día (7 h o 12 h) y se guarda en el cuadrante AC con `role: 'refuerzo'` y su propio horario. Se repite hasta llegar a 135h. Si no hay hueco, se añade un único aviso: «No hay hueco para más refuerzos y algunos médicos AC quedan por debajo de 135h en el mes: Dr. X (febrero, faltan 5h); …». Los refuerzos reservados se descuentan de los que cubre AP ese día.
+Cada refuerzo suma las horas de refuerzo del día (7 h o 12 h) y se guarda en el cuadrante AC con `role: 'refuerzo'` y su propio horario. Se repite hasta llegar a 135h. Si no hay hueco, se añade un único aviso: «No hay hueco para más refuerzos y algunos médicos AC quedan por debajo de 135h en el mes: Dr. X (febrero, faltan 5h); …». Los refuerzos reservados se descuentan de los que cubre AP ese día.
 
 Con el grupo real de 4 AC salen unos 37 refuerzos AC en 2026; febrero y los meses de 30 días son los que más los necesitan.
 
@@ -81,8 +81,7 @@ Si no se cumple (en AP, pools de < 7 médicos con la aritmética actual), la gen
 Ejemplos:
 - Grupo AC de 4 → capacidad ≈ 6.627h; target = 4×1620 = 6.480h → OK, 1 médico/día.
 - Grupo AC de 5 → target = 8.100h > 6.627h → se genera **con aviso** (faltan horas).
-- Grupo AP de 5 → capacidad ≈ 302×7 + 63×12 + 6×12 ≈ 2.942h; tope = 5×425 = 2.125h < 2.942h → se genera **con aviso** (pool demasiado pequeño).
-- Grupo AP de 7 → capacidad ≈ 2.942h; tope = 7×425 = 2.975h → OK (≈ 420h por médico, 1 médico/día; segundo festivo consecutivo: 2).
+- Grupo AP de 17 (el grupo real, `assets/doctors.json`) → con la guardia AP tan larga como la de AC, capacidad ≈ 9.408h; tope = 17×425 = 7.225h < 9.408h → se genera **con aviso** (pool demasiado pequeño; hacen falta al menos 23 médicos).
 
 ### 4. Elegir a los médicos: la estrategia
 
@@ -116,8 +115,8 @@ Si algún médico incumple su límite (por debajo en AC, por encima en AP), la r
 | RD-2 | Día de descanso: asignado (guardia o refuerzo) en D → no disponible en D+1 dentro del grupo; nadie hace guardia y refuerzo el mismo día | **Dura** para grupos >= 2 × pico de plazas; **blanda** para grupos más pequeños. El refuerzo AC se coloca a propósito en D−1 de su guardia |
 | RD-3 | Horas: mínimo 135h/mes y 1.620h/año AC, máximo 425h/año AP por médico | **Blanda** — si no se cumple, la rota se genera con un aviso y la desviación en las estadísticas |
 | RD-4 | Cobertura: 1 guardia AC, 1 guardia AP y 1 refuerzo al día; 2 refuerzos en festivo especial, precedido de otro festivo o, desde 2027, en cualquier sábado | **Dura** — `refuerzosForDay` |
-| RD-5 | Guardia (AC y AP desde 2027) y refuerzos: horas de festivo | **Dura** — duración tomada de `guardiaShiftDetails` (guardia) y `refuerzoShiftDetails` (refuerzo); hasta 2026 ambas eran el horario histórico de AP |
-| RD-6 | Guardia (AC y AP desde 2027) y refuerzos: horas del resto de la semana | **Dura** — duración tomada de `guardiaShiftDetails` (guardia) y `refuerzoShiftDetails` (refuerzo); desde 2027 el sábado tiene su propio horario de guardia (24h) y de refuerzo (12h), distinto del resto de la semana |
+| RD-5 | Guardia (AC y AP) y refuerzos: horas de festivo | **Dura** — duración tomada de `guardiaShiftDetails` (guardia) y `refuerzoShiftDetails` (refuerzo), en todos los años; el refuerzo nunca comparte horario con la guardia del día |
+| RD-6 | Guardia (AC y AP) y refuerzos: horas del resto de la semana | **Dura** — duración tomada de `guardiaShiftDetails` (guardia) y `refuerzoShiftDetails` (refuerzo); desde 2027 el sábado tiene su propio horario de guardia (24h) y de refuerzo (12h), distinto del resto de la semana |
 | RD-7 | Refuerzo AC sólo en D−1 de una guardia suya del mismo mes y sólo si le faltan horas | **Dura** — `planAcRefuerzos` |
 
 ---
@@ -154,7 +153,9 @@ La clasificación del día (festivo / sábado / laborable) es común a AC y AP y
 
 ### Hasta 2026
 
-#### AC (rota primaria)
+La guardia ya era idéntica en AC y AP (`guardiaShiftDetails`); el refuerzo, de AP o de AC, tiene su propio horario (`refuerzoShiftDetails`), distinto del de la guardia del día:
+
+#### Guardia (AC y AP)
 
 | Condición | Tipo de Día | Duración | Turno |
 |-----------|------------|---------|-------|
@@ -162,20 +163,20 @@ La clasificación del día (festivo / sábado / laborable) es común a AC y AP y
 | Sábado (no festivo) | `sábado` | 18h | 15:00 → 09:00+1 |
 | Todos los demás días | `laborable` | 17h | 15:00 → 08:00+1 |
 
-#### Guardia AP y refuerzos
+#### Refuerzos (de AP o de AC)
 
-| Tipo de Día | Guardia AP | Refuerzos | Duración | Turno |
-|-------------|-----------|-----------|---------|-------|
-| festivo especial de sanidad | 1 | 2 | 12h | 10:00 → 22:00 |
-| festivo precedido de otro festivo | 1 | 2 | 12h | 10:00 → 22:00 |
-| festivo aislado o primero de una serie | 1 | 1 | 12h | 10:00 → 22:00 |
-| laborable / sábado | 1 | 1 | 7h | 15:00 → 22:00 |
+| Tipo de Día | Refuerzos | Duración | Turno |
+|-------------|-----------|---------|-------|
+| festivo especial de sanidad | 2 | 12h | 10:00 → 22:00 |
+| festivo precedido de otro festivo | 2 | 12h | 10:00 → 22:00 |
+| festivo aislado o primero de una serie | 1 | 12h | 10:00 → 22:00 |
+| laborable / sábado | 1 | 7h | 15:00 → 22:00 |
 
-El refuerzo que hace un AC tiene este mismo horario. Las duraciones AP **no coinciden** con la duración del día calendario (que es la usada por AC).
+El refuerzo que hace un AC tiene este mismo horario.
 
 ### Desde 2027
 
-La guardia pasa a ser idéntica en AC y AP (`guardiaShiftDetails`); el refuerzo, de AP o de AC, tiene su propio horario (`refuerzoShiftDetails`), distinto del de la guardia:
+La guardia sigue siendo idéntica en AC y AP (`guardiaShiftDetails`), ahora con horas propias por tipo de día; el refuerzo, de AP o de AC, mantiene su propio horario (`refuerzoShiftDetails`), distinto del de la guardia:
 
 | Condición | Guardia (AC y AP) | Refuerzos | Duración refuerzo | Turno refuerzo |
 |-----------|--------------------|-----------|--------------------|-----------------|

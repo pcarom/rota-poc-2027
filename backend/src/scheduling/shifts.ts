@@ -1,4 +1,4 @@
-import { DayInfo, DayType, RotaType } from './scheduling.types';
+import { DayType } from './scheduling.types';
 
 // A partir de este año rige el nuevo régimen de horarios: guardia única para AC
 // y AP, y refuerzos con su propio horario de sábado. Antes de este año, sin cambios.
@@ -26,10 +26,11 @@ const REFUERZO_7H: Readonly<ShiftDetails> = { durationHours: 7, shiftStart: '15:
 const REFUERZO_12H: Readonly<ShiftDetails> = { durationHours: 12, shiftStart: '10:00', shiftEnd: '22:00' };
 
 /**
- * Horario de la guardia del día. Antes de 2027 es el horario histórico de AC; desde
- * 2027 lo comparten AC y AP: el sábado tiene su propio horario de 24h sea festivo o
- * no, el viernes laborable pasa a 18h y el resto de laborables y el domingo/festivo no
- * cambian respecto a antes de 2027.
+ * Horario de la guardia del día, común a AC y AP en todos los años (la guardia AP nunca
+ * tuvo horario propio: siempre fue el mismo que la de AC). Antes de 2027 es el horario
+ * histórico; desde 2027 el sábado tiene su propio horario de 24h sea festivo o no, el
+ * viernes laborable pasa a 18h y el resto de laborables y el domingo/festivo no cambian
+ * respecto a antes de 2027.
  */
 export function guardiaShiftDetails(date: Date, dayType: DayType): ShiftDetails {
   if (!usesShifts2027(date)) {
@@ -55,25 +56,14 @@ export function guardiaShiftDetails(date: Date, dayType: DayType): ShiftDetails 
 }
 
 /**
- * Horario del refuerzo, lo haga un médico AP o uno AC. Antes de 2027 es también el
- * horario de la guardia AP: 7h de lunes a sábado y 12h en festivo. Desde 2027 el
- * sábado se suma al festivo (12h) y sólo el laborable de lunes a viernes queda en 7h.
+ * Horario del refuerzo, lo haga un médico AP o uno AC, en todos los años: antes de 2027,
+ * 7h de lunes a sábado y 12h en festivo; desde 2027 el sábado se suma al festivo (12h) y
+ * sólo el laborable de lunes a viernes queda en 7h. Nunca coincide con el horario de la
+ * guardia del día (`guardiaShiftDetails`), ni antes ni desde 2027.
  */
 export function refuerzoShiftDetails(date: Date, dayType: DayType): ShiftDetails {
   if (dayType === 'holiday' || (usesShifts2027(date) && date.getUTCDay() === SATURDAY_WEEKDAY)) {
     return REFUERZO_12H;
   }
   return REFUERZO_7H;
-}
-
-/**
- * Horario efectivo del día para un grupo. Antes de 2027, AP usa el horario de refuerzo
- * en vez del de guardia (la guardia AP y los refuerzos comparten horario); desde
- * 2027 AC y AP comparten el horario de guardia y `dayInfo` ya lo trae tal cual.
- */
-export function effectiveDayInfo(rotaType: RotaType, dayInfo: DayInfo): DayInfo {
-  if (rotaType !== 'AP' || usesShifts2027(dayInfo.date)) {
-    return dayInfo;
-  }
-  return { ...dayInfo, ...refuerzoShiftDetails(dayInfo.date, dayInfo.dayType) };
 }

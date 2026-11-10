@@ -48,7 +48,7 @@ Este documento resume el backend NestJS actual ahora que la implementación en P
 - `teams`: equipos con nombre único y su lista de médicos (`doctors` JSON con `rota_type`).
 - `rotas`: una rota persistida por `(equipo, año, tipo_rota)` más la instantánea del grupo original (`pool`), guardada en el orden con que se generó el cuadrante (barajado o continuado): el año siguiente lo lee para continuarlo.
 - `rota_doctors`: miembros del grupo normalizados para una rota.
-- `rota_assignments`: una fila por asignación. En AP, un festivo precedido de otro festivo (o, desde 2027, cualquier sábado) tiene dos filas por fecha (segundo refuerzo), cada una con distinto `doctor_id`. La columna `duration_hours` puede diferir entre rotas para la misma fecha: hasta 2026, AC usa la duración del día calendario y AP usa 7h o 12h; desde 2027 la guardia es la misma en AC y AP (duración del día calendario) y sólo el refuerzo usa su propio horario (7h o 12h, `scheduling/shifts.ts`).
+- `rota_assignments`: una fila por asignación. En AP, un festivo precedido de otro festivo (o, desde 2027, cualquier sábado) tiene dos filas por fecha (segundo refuerzo), cada una con distinto `doctor_id`. La columna `duration_hours` de la guardia es la misma en AC y AP para la misma fecha (duración del día calendario, en todos los años); sólo el refuerzo usa su propio horario (7h o 12h, `scheduling/shifts.ts`), que nunca coincide con el de la guardia del día.
 - `holidays`: filas de festivos en caché indexadas por `(año, ciudad, fecha)`. Contiene una columna `source ('api' | 'manual')` para distinguir los festivos obtenidos de la API externa de los creados por el usuario.
 
 Restricciones importantes:
@@ -69,5 +69,5 @@ Restricciones importantes:
 ## Notas Operativas
 
 - Producción y Docker usan migraciones MySQL mediante `npm run migration:run` o `npm run migration:run:dist`.
-- La respuesta de la API preserva el formato de turno nocturno con `+1` sólo cuando el turno realmente cruza medianoche (`formatShiftEnd`). Los refuerzos (15:00–22:00 y 10:00–22:00) se devuelven sin sufijo `+1`; la guardia AP, que hasta 2026 usaba esos mismos horarios, desde 2027 comparte el horario de guardia con AC (`scheduling/shifts.ts`) y sí puede llevar `+1`.
+- La respuesta de la API preserva el formato de turno nocturno con `+1` sólo cuando el turno realmente cruza medianoche (`formatShiftEnd`). Los refuerzos (15:00–22:00 y 10:00–22:00) se devuelven sin sufijo `+1`; la guardia (AC y AP) comparte siempre el mismo horario (`scheduling/shifts.ts`) y, según el tipo de día, sí puede llevar `+1`.
 - El backend no expone Swagger actualmente; el contrato estable está documentado en código y pruebas.

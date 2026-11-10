@@ -1,11 +1,9 @@
 import {
   SHIFTS_2027_FROM_YEAR,
-  effectiveDayInfo,
   guardiaShiftDetails,
   refuerzoShiftDetails,
 } from '../../src/scheduling/shifts';
 import { fromIsoDate } from '../../src/common/date.utils';
-import { DayInfo } from '../../src/scheduling/scheduling.types';
 
 describe('SHIFTS_2027_FROM_YEAR', () => {
   it('vale 2027', () => {
@@ -128,38 +126,3 @@ describe('refuerzoShiftDetails (antes de 2027, sin cambios)', () => {
   });
 });
 
-describe('effectiveDayInfo', () => {
-  const saturday2026: DayInfo = {
-    date: fromIsoDate('2026-01-03'),
-    dayType: 'saturday',
-    publicHoliday: false,
-    durationHours: 18,
-    shiftStart: '15:00',
-    shiftEnd: '09:00+1',
-  };
-  const saturday2027: DayInfo = {
-    date: fromIsoDate('2027-01-09'),
-    dayType: 'saturday',
-    publicHoliday: false,
-    durationHours: 24,
-    shiftStart: '09:00',
-    shiftEnd: '09:00+1',
-  };
-
-  it('AP antes de 2027 usa el horario de refuerzo: 7h un sábado', () => {
-    expect(effectiveDayInfo('AP', saturday2026)).toMatchObject({
-      durationHours: 7,
-      shiftStart: '15:00',
-      shiftEnd: '22:00',
-    });
-  });
-
-  it('AP desde 2027 comparte horario con AC: 24h un sábado, sin transformar', () => {
-    expect(effectiveDayInfo('AP', saturday2027)).toEqual(saturday2027);
-  });
-
-  it('AC nunca transforma el día, sea cual sea el año', () => {
-    expect(effectiveDayInfo('AC', saturday2026)).toEqual(saturday2026);
-    expect(effectiveDayInfo('AC', saturday2027)).toEqual(saturday2027);
-  });
-});
