@@ -144,7 +144,7 @@ Se trata de una **Prueba de Concepto (PoC)** — la autenticación, autorizació
 
 | ID | Criterio |
 |----|---------|
-| CA-3.5.1 | **Dada** una rota generada o almacenada, **cuando** se solicitan estadísticas, **entonces** la respuesta incluye por médico: horas totales, desglose mensual de horas, recuento de turnos por tipo de día (laborable/sábado/domingo-festivo). |
+| CA-3.5.1 | **Dada** una rota generada o almacenada, **cuando** se solicitan estadísticas, **entonces** la respuesta incluye por médico: horas totales desglosadas en horas de guardia (`guardia_hours`) y horas de refuerzo (`refuerzo_hours`), desglose mensual de horas, recuento de turnos por tipo de día (laborable/sábado/domingo-festivo). |
 | CA-3.5.3 | **Dado** un médico por debajo de su objetivo anual, **cuando** se muestran las estadísticas, **entonces** aparecen sus horas faltantes («Faltan») y el resumen incluye el total de «Horas faltantes». |
 | CA-3.5.2 | **Dadas** las estadísticas, **cuando** se revisa la equidad, **entonces** las estadísticas muestran claramente cualquier desequilibrio entre médicos. |
 

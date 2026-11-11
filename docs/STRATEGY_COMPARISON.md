@@ -94,6 +94,11 @@ Las horas totales del año dependen sólo del calendario y del número de guardi
 - **AC**: con 5 o 6 médicos todos quedan por debajo de 1.620 h. Con 3 o 4 todos lo cumplen.
 - **AP**: con 5 médicos todos superan las 425 h. Con 8 o más ninguno las supera.
 
+> Estas cifras de AP se midieron cuando la guardia AP usaba por error el horario de
+> refuerzo (7h/12h) en vez del horario de guardia, y antes de los horarios de 2027.
+> Con la guardia AP corregida, también los grupos de 17 y 21 médicos AP superan las
+> 425h/año (ver `docs/ALGORITHM.md`).
+
 Cambiar de método no arregla un grupo mal dimensionado.
 
 ### 7. Resonancia con 5 médicos: corregida con un salto semanal

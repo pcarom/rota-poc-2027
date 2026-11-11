@@ -87,5 +87,8 @@ En la interfaz cada mensaje va precedido de «No se ha podido leer «fichero»: 
   se usa al generar.
 - Los cuadrantes ya generados conservan los médicos con los que se generaron
   hasta que se regeneren.
-- Para generar sin avisos de tamaño de grupo, el ejemplo usa 4 AC y 17 AP, el
-  mismo tamaño que la lista inicial.
+- El ejemplo usa 4 AC y 17 AP, el mismo tamaño que la lista inicial. Desde que la
+  guardia AP usa el horario de guardia (igual que AC) en vez del de refuerzo, ese
+  tamaño de grupo AP genera con el aviso de «grupo demasiado pequeño para AP»
+  (hacen falta al menos 23 médicos en 2026, 26 desde 2027); lo mismo ocurre con
+  los 21 AP de `doctors-21-ap.json`.

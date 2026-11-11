@@ -48,7 +48,7 @@ Sin migración de datos: un cuadrante generado antes de un cambio de horario con
    - Si algún profesional incumple su límite (AC por debajo, AP por encima), el cuadrante se genera igualmente con un aviso y las estadísticas muestran la desviación de cada médico.
 2. **Día de descanso**: un médico de guardia el día D queda libre el D+1 dentro de la misma rota. Restricción suavizable en pools muy pequeños.
 3. **AC y AP se generan de forma independiente**: un mismo médico no puede aparecer en ambas rotas.
-4. **Cobertura primary base = 1**: el algoritmo nunca asigna más de un AC primary por día ni más de un AP primary por día, salvo los festivos AP precedidos de otro festivo, que llevan 2. Con pools AC que exceden la capacidad de cobertura anual, o pools AP demasiado pequeños para respetar el máximo de 425 h, el cuadrante se genera igualmente y se devuelve un aviso.
+4. **Cobertura primary base = 1**: el algoritmo nunca asigna más de un AC primary por día ni más de un AP primary por día, salvo cuando el día lleva 2 refuerzos (festivos especiales de sanidad, segundo de dos festivos consecutivos y, desde 2027, todos los sábados; nunca más de 2, ver sección 3). Con pools AC que exceden la capacidad de cobertura anual, o pools AP demasiado pequeños para respetar el máximo de 425 h, el cuadrante se genera igualmente y se devuelve un aviso.
 
 ## 6. Equidad
 
@@ -80,7 +80,7 @@ Las asignaciones se distribuyen equitativamente entre los profesionales del pool
 Se devuelve un calendario anual con:
 
 - Asignaciones primary por día (1 médico para AC, 1 ó 2 médicos para AP).
-- Estadísticas por médico: horas totales, horas vs. objetivo, número de turnos por tipo de día, horas mensuales.
+- Estadísticas por médico: horas totales (desglosadas en horas de guardia y horas de refuerzo), horas vs. objetivo, número de turnos por tipo de día, horas mensuales.
 - Avisos (`warnings`): al generar, un aviso agregado si algún médico incumple su límite anual (cuántos médicos y cuántas horas faltan o sobran en total). En las consultas posteriores la lista va vacía; la desviación sigue en las estadísticas.
 
 ## 9. Persistencia y consultas
