@@ -77,7 +77,7 @@ Variables de entorno (backend). Sin Docker, `cp backend/.env.example backend/.en
 
 ## Pruebas
 
-- Backend: `npm test` — cobertura unitaria y e2e con Jest desde `backend/test/` (218 tests actualmente)
+- Backend: `npm test` — cobertura unitaria y e2e con Jest desde `backend/test/` (223 tests actualmente)
 - Frontend: `vitest` — 177 tests cubriendo servicios, componentes y la integración del app shell
 - Todos los criterios de aceptación del PRD tienen casos de prueba correspondientes (ver docs/IMPLEMENTATION.md sección 4.4)
 - Las pruebas deben escribirse ANTES de la implementación (enfoque ATDD)
@@ -96,7 +96,7 @@ Una PR no se mezcla con la CI en rojo. La CI **no** sustituye a la verificación
 ## Verificación Visual (obligatoria antes del commit)
 
 Las builds y los tests no ven la aplicación. Un cambio puede compilar, pasar los
-395 tests y aun así llegar roto al usuario: texto desbordado, una cadena que
+400 tests y aun así llegar roto al usuario: texto desbordado, una cadena que
 ningún test comprueba, un mensaje que la librería genera en inglés. Por eso, todo
 cambio que toque algo visible para el usuario —frontend, o mensajes del backend,
 que llegan literalmente a la interfaz vía `extractErrorMessage` en

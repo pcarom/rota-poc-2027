@@ -112,6 +112,9 @@ export class RotaResponseMapper {
         doctor_id: doctor.doctorId,
         doctor_name: doctor.doctorName,
         role: doctor.role ?? 'guardia',
+        duration_hours: doctor.durationHours ?? day.durationHours,
+        shift_start: doctor.shiftStart ?? day.shiftStart,
+        shift_end: doctor.shiftEnd ?? day.shiftEnd,
       })),
     }));
   }
