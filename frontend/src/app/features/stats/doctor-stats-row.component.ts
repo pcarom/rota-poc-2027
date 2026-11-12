@@ -10,9 +10,19 @@ import { RotaType } from '../../core/models/doctor.model';
       <strong class="doctor-name">{{ stats().doctor_name }}</strong>
       <div class="stats-grid">
         <div class="stat-item">
+          <span class="stat-label">Guardias</span>
+          <span class="stat-value">{{ stats().guardia_hours }}h</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Refuerzos</span>
+          <span class="stat-value">{{ stats().refuerzo_hours }}h</span>
+        </div>
+        <div class="stat-item">
           <span class="stat-label">Total</span>
           <span class="stat-value">{{ stats().total_hours }}h</span>
         </div>
+      </div>
+      <div class="stats-grid compact">
         <div class="stat-item">
           <span class="stat-label">Objetivo</span>
           <span class="stat-value">{{ stats().target_hours ?? 0 }}h</span>
@@ -25,8 +35,6 @@ import { RotaType } from '../../core/models/doctor.model';
             [attr.title]="rotaType() === 'AC' ? 'Mínimo mensual: ' + acMonthlyMinimum + 'h' : null"
           >{{ currentMonthHours() }}h</span>
         </div>
-      </div>
-      <div class="stats-grid compact">
         <div class="stat-item">
           <span class="stat-label">Desviación</span>
           <span class="stat-value" [class.negative]="isOutOfLimit()">
@@ -101,6 +109,7 @@ import { RotaType } from '../../core/models/doctor.model';
 
     .stats-grid.compact {
       margin-top: -0.1rem;
+      flex-wrap: wrap;
     }
 
     .hours-bar {

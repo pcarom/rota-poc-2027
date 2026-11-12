@@ -41,7 +41,8 @@ export class RotaAssignmentEntity {
   @Column({ name: 'doctor_id', type: 'varchar', length: 50 })
   doctorId!: string;
 
-  // 'guardia' o 'refuerzo'. Un AC con refuerzo lo tiene en su propio cuadrante, con horario AP.
+  // 'guardia' o 'refuerzo'. Un AC con refuerzo lo tiene en su propio cuadrante, con su
+  // propio horario de refuerzo.
   @Column({ type: 'varchar', length: 20, default: 'guardia' })
   role!: string;
 

@@ -6,6 +6,7 @@ import { toIsoDate } from '../common/date.utils';
 import { isSanidadSpecialHoliday, sanidadSpecialHolidays } from '../common/sanidad-holidays';
 import { HolidayEntity } from '../rota/entities/holiday.entity';
 import { DayInfo } from '../scheduling/scheduling.types';
+import { guardiaShiftDetails } from '../scheduling/shifts';
 
 export interface HolidayApiItem {
   date: string;
@@ -101,9 +102,7 @@ export function classifyDay(date: Date, holidays: Set<Date>): DayInfo {
       dayType: 'holiday',
       publicHoliday,
       specialHoliday,
-      durationHours: 23,
-      shiftStart: '09:00',
-      shiftEnd: '08:00+1',
+      ...guardiaShiftDetails(date, 'holiday'),
     };
   }
 
@@ -112,9 +111,7 @@ export function classifyDay(date: Date, holidays: Set<Date>): DayInfo {
       date,
       dayType: 'saturday',
       publicHoliday: false,
-      durationHours: 18,
-      shiftStart: '15:00',
-      shiftEnd: '09:00+1',
+      ...guardiaShiftDetails(date, 'saturday'),
     };
   }
 
@@ -122,9 +119,7 @@ export function classifyDay(date: Date, holidays: Set<Date>): DayInfo {
     date,
     dayType: 'weekday',
     publicHoliday: false,
-    durationHours: 17,
-    shiftStart: '15:00',
-    shiftEnd: '08:00+1',
+    ...guardiaShiftDetails(date, 'weekday'),
   };
 }
 

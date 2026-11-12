@@ -36,6 +36,8 @@ export class RotaResponseMapper {
       doctors: statsList.map((doctor) => ({
         doctor_id: doctor.doctorId,
         doctor_name: doctor.doctorName,
+        guardia_hours: doctor.guardiaHours,
+        refuerzo_hours: doctor.refuerzoHours,
         total_hours: doctor.totalHours,
         target_hours: doctor.targetHours,
         hours_vs_target: doctor.hoursVsTarget,
@@ -110,6 +112,9 @@ export class RotaResponseMapper {
         doctor_id: doctor.doctorId,
         doctor_name: doctor.doctorName,
         role: doctor.role ?? 'guardia',
+        duration_hours: doctor.durationHours ?? day.durationHours,
+        shift_start: doctor.shiftStart ?? day.shiftStart,
+        shift_end: doctor.shiftEnd ?? day.shiftEnd,
       })),
     }));
   }

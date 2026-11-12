@@ -65,6 +65,10 @@ describe('HTTP contract', () => {
   const byDate = (schedule: ApiDay[]) => new Map(schedule.map((day) => [day.date, day]));
   const withRole = (day: ApiDay | undefined, role: string) =>
     (day?.doctors ?? []).filter((doctor) => doctor.role === role);
+  const hoursOf = (
+    body: { stats: { doctors: { doctor_id: string; total_hours: number }[] } },
+    doctorId: string,
+  ) => body.stats.doctors.find((doctor) => doctor.doctor_id === doctorId)!.total_hours;
 
   it('genera AC y AP con una sola petición', async () => {
     const response = await generate();
@@ -80,10 +84,27 @@ describe('HTTP contract', () => {
     expect(ac.stats.doctors).toHaveLength(4);
     expect(ap.stats.doctors).toHaveLength(AP_POOL_17.length);
     expect(ac.warnings).toEqual([]);
-    expect(ap.warnings).toEqual([]);
+    // El grupo real de 17 AP supera las 425h/año con la guardia AP corregida (antes
+    // usaba por error el horario del refuerzo, 7h/12h); el cuadrante se genera igual,
+    // con ese aviso (restricción blanda).
+    expect(ap.warnings).toHaveLength(1);
+    expect(ap.warnings[0]).toMatch(/demasiado pequeño para AP/);
 
     const allRotas = await app.inject({ method: 'GET', url: '/api/v1/rota/2026' });
     expect(allRotas.json().map((rota: { rota_type: string }) => rota.rota_type)).toEqual(['AC', 'AP']);
+  });
+
+  it('las estadísticas de cada médico desglosan las horas de guardia y de refuerzo', async () => {
+    const [ac, ap] = (await generate()).json();
+
+    for (const rota of [ac, ap]) {
+      expect(rota.stats.doctors.length).toBeGreaterThan(0);
+      for (const doctor of rota.stats.doctors) {
+        expect(typeof doctor.guardia_hours).toBe('number');
+        expect(typeof doctor.refuerzo_hours).toBe('number');
+        expect(doctor.guardia_hours + doctor.refuerzo_hours).toBe(doctor.total_hours);
+      }
+    }
   });
 
   it('cada día devuelve una guardia AC, una guardia AP y sus refuerzos con su papel', async () => {
@@ -110,10 +131,11 @@ describe('HTTP contract', () => {
     }
     expect(withRole(apDays.get('2026-08-15'), 'refuerzo')).toHaveLength(1);
 
+    // La guardia AP (como la AC): 23h, 09:00 a 08:00+1.
     const holiday = apDays.get('2026-08-16')!;
-    expect(holiday.duration_hours).toBe(12);
-    expect(holiday.shift_start).toBe('10:00');
-    expect(holiday.shift_end).toBe('22:00');
+    expect(holiday.duration_hours).toBe(23);
+    expect(holiday.shift_start).toBe('09:00');
+    expect(holiday.shift_end).toBe('08:00+1');
   });
 
   it('el refuerzo de un AC conserva el horario de la guardia AC del día y suma horas AP', async () => {
@@ -356,9 +378,7 @@ describe('HTTP contract', () => {
     const extraDoctor = AC_POOL_4.find((doctor) => doctor.id !== assignedDoctorId);
     expect(extraDoctor).toBeDefined();
 
-    const hoursOf = (body: { stats: { doctors: { doctor_id: string; total_hours: number }[] } }) =>
-      body.stats.doctors.find((doctor) => doctor.doctor_id === extraDoctor!.id)!.total_hours;
-    const hoursBefore = hoursOf(ac);
+    const hoursBefore = hoursOf(ac, extraDoctor!.id);
 
     const addition = await app.inject({
       method: 'POST',
@@ -372,7 +392,7 @@ describe('HTTP contract', () => {
     expect(updatedDay.doctors).toHaveLength(2);
     expect(updatedDay.doctors[0].doctor_id).toBe(assignedDoctorId);
     expect(updatedDay.doctors[1]).toMatchObject({ doctor_id: extraDoctor!.id, role: 'refuerzo' });
-    expect(hoursOf(addition.json())).toBe(hoursBefore + (targetDay.day_type === 'holiday' ? 12 : 7));
+    expect(hoursOf(addition.json(), extraDoctor!.id)).toBe(hoursBefore + (targetDay.day_type === 'holiday' ? 12 : 7));
 
     // En AP se añade un refuerzo.
     const apDay = ap.schedule[10] as ApiDay;
@@ -430,15 +450,67 @@ describe('HTTP contract', () => {
     expect(refuerzos).toBe(2);
   });
 
-  it('aplica turnos AP de 7h en laborables y sábados (15:00–22:00)', async () => {
+  it('la guardia AP es de 17h laborable y 18h sábado, igual que la AC', async () => {
     const [, ap] = (await generate()).json();
 
-    const nonHoliday = (ap.schedule as ApiDay[]).find(
-      (day) => day.day_type === 'weekday' || day.day_type === 'saturday',
-    )!;
-    expect(nonHoliday.duration_hours).toBe(7);
-    expect(nonHoliday.shift_start).toBe('15:00');
-    expect(nonHoliday.shift_end).toBe('22:00');
+    const weekday = (ap.schedule as ApiDay[]).find((day) => day.day_type === 'weekday')!;
+    expect(weekday.duration_hours).toBe(17);
+    expect(weekday.shift_start).toBe('15:00');
+    expect(weekday.shift_end).toBe('08:00+1');
+
+    const saturday = (ap.schedule as ApiDay[]).find((day) => day.day_type === 'saturday')!;
+    expect(saturday.duration_hours).toBe(18);
+    expect(saturday.shift_start).toBe('15:00');
+    expect(saturday.shift_end).toBe('09:00+1');
+  });
+
+  describe('horarios 2027: guardia única AC/AP y refuerzos propios', () => {
+    it('un sábado de 2027 tiene guardias AC y AP de 24h y dos refuerzos', async () => {
+      const [ac, ap] = (await generate({ year: 2027 })).json();
+      // 2027-01-09 es sábado.
+      const acDay = byDate(ac.schedule).get('2027-01-09')!;
+      const apDay = byDate(ap.schedule).get('2027-01-09')!;
+
+      expect(acDay).toMatchObject({ duration_hours: 24, shift_start: '09:00', shift_end: '09:00+1' });
+      expect(apDay).toMatchObject({ duration_hours: 24, shift_start: '09:00', shift_end: '09:00+1' });
+
+      const refuerzos = withRole(acDay, 'refuerzo').length + withRole(apDay, 'refuerzo').length;
+      expect(refuerzos).toBe(2);
+    });
+
+    it('un refuerzo añadido a mano en AP suma 7h un viernes y 12h un sábado', async () => {
+      const [, ap] = (await generate({ year: 2027 })).json();
+      const apDays = byDate(ap.schedule);
+
+      // 2027-01-08 es viernes (guardia AP de 18h desde 2027; el refuerzo sigue en 7h).
+      const friday = apDays.get('2027-01-08')!;
+      const fridayExtra = AP_POOL_17.find(
+        (doctor) => !friday.doctors.some((ref) => ref.doctor_id === doctor.id),
+      )!;
+      const fridayHoursBefore = hoursOf(ap, fridayExtra.id);
+      const fridayAddition = await app.inject({
+        method: 'POST',
+        url: '/api/v1/rota/2027/AP/add',
+        payload: { date: friday.date, doctor_id: fridayExtra.id },
+      });
+      expect(fridayAddition.statusCode).toBe(200);
+      expect(hoursOf(fridayAddition.json(), fridayExtra.id)).toBe(fridayHoursBefore + 7);
+
+      // 2027-01-09 es sábado (guardia AP de 24h desde 2027; el refuerzo sigue en 12h).
+      // Médico distinto del de arriba, para que su «antes» no arrastre el refuerzo del viernes.
+      const saturday = apDays.get('2027-01-09')!;
+      const saturdayExtra = AP_POOL_17.find(
+        (doctor) => doctor.id !== fridayExtra.id && !saturday.doctors.some((ref) => ref.doctor_id === doctor.id),
+      )!;
+      const saturdayHoursBefore = hoursOf(ap, saturdayExtra.id);
+      const saturdayAddition = await app.inject({
+        method: 'POST',
+        url: '/api/v1/rota/2027/AP/add',
+        payload: { date: saturday.date, doctor_id: saturdayExtra.id },
+      });
+      expect(saturdayAddition.statusCode).toBe(200);
+      expect(hoursOf(saturdayAddition.json(), saturdayExtra.id)).toBe(saturdayHoursBefore + 12);
+    });
   });
 
   describe('continuidad con el año anterior', () => {

@@ -32,6 +32,8 @@ describe('RotaService', () => {
         {
           doctor_id: 'doc-001',
           doctor_name: 'Dr. Garcia',
+          guardia_hours: 1500,
+          refuerzo_hours: 150,
           total_hours: 1650,
           monthly_hours: { 1: 140, 2: 130 },
           shifts_weekday: 20,

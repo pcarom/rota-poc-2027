@@ -7,7 +7,7 @@ import {
   continuePoolOrder,
 } from './continuation';
 import { InfeasiblePoolError } from './errors';
-import { apShiftDetails, effectiveDayInfo } from './shifts';
+import { SATURDAY_WEEKDAY, refuerzoShiftDetails, usesShifts2027 } from './shifts';
 import { RandomSource, shuffle } from './shuffle';
 import { calculateStats } from './stats.service';
 import {
@@ -21,17 +21,13 @@ import {
   DoctorInput,
   RotaSchedule,
   RotaType,
+  ShiftRole,
 } from './scheduling.types';
 
 export const AC_MIN_HOURS_YEAR = 1620;
 export const AC_MIN_HOURS_MONTH = 135;
 export const AP_MAX_HOURS_YEAR = 425;
 
-export {
-  AP_HOLIDAY_HOURS,
-  AP_WEEKDAY_SATURDAY_HOURS,
-  apShiftDetails,
-} from './shifts';
 export { InfeasiblePoolError };
 
 const SUNDAY_ISO_WEEKDAY = 6;
@@ -42,13 +38,16 @@ const MONTH_NAMES = [
 ];
 
 /**
- * Refuerzos del día: 1, o 2 en un festivo especial de sanidad o en un festivo cuyo
- * día anterior también es festivo. Sin `previousDay` (1 de enero cuando no se conoce
- * el 31 de diciembre anterior) el día anterior es festivo si cae en domingo o es un
- * festivo especial.
+ * Refuerzos del día: 2 en un festivo especial de sanidad, en cualquier sábado desde
+ * 2027 (sea festivo o no) o en un festivo cuyo día anterior también es festivo; si no,
+ * 1. Sin `previousDay` (1 de enero cuando no se conoce el 31 de diciembre anterior) el
+ * día anterior es festivo si cae en domingo o es un festivo especial.
  */
 export function refuerzosForDay(day: DayInfo, previousDay?: DayInfo): number {
   if (day.specialHoliday) {
+    return 2;
+  }
+  if (usesShifts2027(day.date) && day.date.getUTCDay() === SATURDAY_WEEKDAY) {
     return 2;
   }
   if (day.dayType !== 'holiday') {
@@ -117,13 +116,11 @@ function assignRota(
   previous?: PreviousYearRota,
   previousDays: DayInfo[] = [],
 ): AssignedRota {
-  const effectiveDays = dayClassifications.map((day) => effectiveDayInfo(rotaType, day));
-
   if (pool.length < 1) {
     throw new InfeasiblePoolError(`El grupo debe tener al menos 1 médico (tiene ${pool.length}).`);
   }
 
-  const refuerzosByDay = effectiveDays.map((day, index) =>
+  const refuerzosByDay = dayClassifications.map((day, index) =>
     rotaType === 'AP'
       ? Math.max(
           0,
@@ -153,20 +150,30 @@ function assignRota(
       : undefined;
   const assigned = getAssignmentStrategy(strategyId).assign({
     pool: orderedPool,
-    days: effectiveDays,
+    days: dayClassifications,
     requiredByDay,
     refuerzosByDay,
     continuation,
   });
-  const schedule: DayAssignment[] = effectiveDays.map((dayInfo, index) => {
+  const schedule: DayAssignment[] = dayClassifications.map((dayInfo, index) => {
     const guardias = requiredByDay[index] - refuerzosByDay[index];
     return {
       ...dayInfo,
-      doctors: assigned[index].map((doctor, position) => ({
-        doctorId: doctor.id,
-        doctorName: doctor.name,
-        role: position < guardias ? 'guardia' : 'refuerzo',
-      })),
+      doctors: assigned[index].map((doctor, position) => {
+        const role: ShiftRole = position < guardias ? 'guardia' : 'refuerzo';
+        // El refuerzo siempre lleva su propio horario: la guardia del día y el refuerzo
+        // nunca comparten horario (p. ej. sábado desde 2027, 24h de guardia pero 12h de
+        // refuerzo), así que sin este horario propio el refuerzo heredaría el de la
+        // guardia del día.
+        const refuerzoShift =
+          role === 'refuerzo' ? refuerzoShiftDetails(dayInfo.date, dayInfo.dayType) : undefined;
+        return {
+          doctorId: doctor.id,
+          doctorName: doctor.name,
+          role,
+          ...refuerzoShift,
+        };
+      }),
     };
   });
 
@@ -183,9 +190,10 @@ function assignRota(
 
 /**
  * Completa las horas mensuales de cada AC con refuerzos. Si un AC no llega a 135h en
- * un mes, hace refuerzos (horario AP) el día anterior a alguna de sus guardias de ese
- * mes, tantos como hagan falta, mientras quede hueco: el día anterior debe estar en el
- * mismo mes, no ser su día de descanso ni tener ya cubiertos todos los refuerzos.
+ * un mes, hace refuerzos (horario de refuerzo) el día anterior a alguna de sus
+ * guardias de ese mes, tantos como hagan falta, mientras quede hueco: el día anterior
+ * debe estar en el mismo mes, no ser su día de descanso ni tener ya cubiertos todos
+ * los refuerzos.
  * Devuelve los refuerzos AC reservados por día y los avisos de los meses que no se
  * han podido completar.
  */
@@ -252,7 +260,7 @@ function planAcRefuerzos(
         }
 
         const refuerzoDay = schedule[refuerzoIndex];
-        const shift = apShiftDetails(refuerzoDay.dayType);
+        const shift = refuerzoShiftDetails(refuerzoDay.date, refuerzoDay.dayType);
         refuerzoDay.doctors.push({
           doctorId: doctor.id,
           doctorName: doctor.name,

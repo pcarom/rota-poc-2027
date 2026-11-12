@@ -17,16 +17,28 @@ Un médico pertenece a un único grupo (AC o AP) y nunca participa en la rota de
 
 ## 3. Reglas de cobertura diaria
 
-- **Cada día** debe haber, como mínimo, **1 AC** asignado y **1 AP** asignado.
-- **En festivos** (incluye domingos clasificados como festivos por la regulación) el AP hace un turno de **12 h** (10:00 a 22:00).
-- **Cuando hay dos festivos consecutivos**, el **segundo** lleva **2 AP** (12 h cada uno). El primer festivo de la serie y los festivos aislados llevan 1 AP.
+- **Cada día** debe haber, como mínimo, **1 AC de guardia** y **1 AP de guardia**, más el refuerzo del día (de AP, salvo el que cubre un AC).
+- **En festivos** (incluye domingos clasificados como festivos por la regulación) el refuerzo hace un turno de **12 h** (10:00 a 22:00); la guardia, igual para AC y AP, tiene su propio horario de festivo (ver sección 4).
+- **Cuando hay dos festivos consecutivos**, el **segundo** lleva **2 refuerzos** (12 h cada uno). El primer festivo de la serie y los festivos aislados llevan 1 refuerzo.
+- **Desde 2027**, **todos los sábados** llevan **2 refuerzos** de 12 h (también si el sábado es festivo). Nunca hay más de 2.
 
 ## 4. Duraciones de turno por rota y tipo de día
 
-| Rota / rol            | Laborable             | Sábado                | Festivo / Domingo     |
-|-----------------------|-----------------------|-----------------------|-----------------------|
-| AC (primary)          | 17 h (15:00–08:00+1)  | 18 h (15:00–09:00+1)  | 23 h (09:00–08:00+1)  |
-| AP (refuerzo del día) | 7 h (15:00–22:00)     | 7 h (15:00–22:00)     | 12 h (10:00–22:00); × 2 en el segundo festivo consecutivo |
+Hasta 2026, la guardia ya era la misma para AC y AP; el refuerzo (lo haga un AP o, si le faltan horas en el mes, un AC) tiene su propio horario, que nunca coincide con el de la guardia del día:
+
+| Rol               | Laborable             | Sábado                | Festivo / Domingo     |
+|-------------------|-----------------------|-----------------------|-----------------------|
+| Guardia (AC y AP) | 17 h (15:00–08:00+1)  | 18 h (15:00–09:00+1)  | 23 h (09:00–08:00+1)  |
+| Refuerzo          | 7 h (15:00–22:00)     | 7 h (15:00–22:00)     | 12 h (10:00–22:00); × 2 en el segundo festivo consecutivo |
+
+Desde 2027 la guardia sigue siendo la misma para AC y AP, pero con horas distintas por tipo de día; los refuerzos (los haga un AP o un AC) mantienen su propio horario. Un sábado festivo mantiene el horario de sábado; un festivo de lunes a viernes tiene el de domingo.
+
+| Rol      | Lunes a jueves        | Viernes               | Sábado                                  | Domingo / Festivo     |
+|----------|-----------------------|-----------------------|-----------------------------------------|-----------------------|
+| Guardia  | 17 h (15:00–08:00+1)  | 18 h (15:00–09:00+1)  | 24 h (09:00–09:00+1)                    | 23 h (09:00–08:00+1)  |
+| Refuerzo | 7 h (15:00–22:00)     | 7 h (15:00–22:00)     | 12 h (10:00–22:00); siempre 2 refuerzos | 12 h (10:00–22:00); × 2 en el segundo festivo consecutivo |
+
+Sin migración de datos: un cuadrante generado antes de un cambio de horario conserva las horas con las que se generó hasta que se regenera.
 
 ## 5. Restricciones (validadas por el algoritmo)
 
@@ -36,7 +48,7 @@ Un médico pertenece a un único grupo (AC o AP) y nunca participa en la rota de
    - Si algún profesional incumple su límite (AC por debajo, AP por encima), el cuadrante se genera igualmente con un aviso y las estadísticas muestran la desviación de cada médico.
 2. **Día de descanso**: un médico de guardia el día D queda libre el D+1 dentro de la misma rota. Restricción suavizable en pools muy pequeños.
 3. **AC y AP se generan de forma independiente**: un mismo médico no puede aparecer en ambas rotas.
-4. **Cobertura primary base = 1**: el algoritmo nunca asigna más de un AC primary por día ni más de un AP primary por día, salvo los festivos AP precedidos de otro festivo, que llevan 2. Con pools AC que exceden la capacidad de cobertura anual, o pools AP demasiado pequeños para respetar el máximo de 425 h, el cuadrante se genera igualmente y se devuelve un aviso.
+4. **Cobertura primary base = 1**: el algoritmo nunca asigna más de un AC primary por día ni más de un AP primary por día, salvo cuando el día lleva 2 refuerzos (festivos especiales de sanidad, segundo de dos festivos consecutivos y, desde 2027, todos los sábados; nunca más de 2, ver sección 3). Con pools AC que exceden la capacidad de cobertura anual, o pools AP demasiado pequeños para respetar el máximo de 425 h, el cuadrante se genera igualmente y se devuelve un aviso.
 
 ## 6. Equidad
 
@@ -68,7 +80,7 @@ Las asignaciones se distribuyen equitativamente entre los profesionales del pool
 Se devuelve un calendario anual con:
 
 - Asignaciones primary por día (1 médico para AC, 1 ó 2 médicos para AP).
-- Estadísticas por médico: horas totales, horas vs. objetivo, número de turnos por tipo de día, horas mensuales.
+- Estadísticas por médico: horas totales (desglosadas en horas de guardia y horas de refuerzo), horas vs. objetivo, número de turnos por tipo de día, horas mensuales.
 - Avisos (`warnings`): al generar, un aviso agregado si algún médico incumple su límite anual (cuántos médicos y cuántas horas faltan o sobran en total). En las consultas posteriores la lista va vacía; la desviación sigue en las estadísticas.
 
 ## 9. Persistencia y consultas

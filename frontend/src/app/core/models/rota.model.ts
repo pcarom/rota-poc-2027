@@ -1,6 +1,6 @@
 import { RotaType } from './doctor.model';
 
-/** Guardia: plaza principal del grupo. Refuerzo: plaza adicional con horario AP. */
+/** Guardia: plaza principal del grupo. Refuerzo: plaza adicional con su propio horario de refuerzo, que nunca coincide con el de la guardia del día. */
 export type ShiftRole = 'guardia' | 'refuerzo';
 
 export interface DoctorRef {
@@ -46,6 +46,9 @@ export interface DayAssignment {
 export interface DoctorStats {
   doctor_id: string;
   doctor_name: string;
+  /** guardia_hours + refuerzo_hours === total_hours siempre */
+  guardia_hours: number;
+  refuerzo_hours: number;
   total_hours: number;
   target_hours?: number;
   hours_vs_target?: number;

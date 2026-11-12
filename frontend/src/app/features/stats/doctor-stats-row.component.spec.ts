@@ -9,6 +9,8 @@ describe('DoctorStatsRowComponent', () => {
   const mockStats: DoctorStats = {
     doctor_id: 'doc-001',
     doctor_name: 'Dr. Garcia',
+    guardia_hours: 1500,
+    refuerzo_hours: 150,
     total_hours: 1650,
     monthly_hours: { 1: 140, 2: 130 },
     shifts_weekday: 20,
@@ -50,6 +52,25 @@ describe('DoctorStatsRowComponent', () => {
     const statTexts = Array.from(statValues).map((el: any) => el.textContent.trim());
 
     expect(statTexts).toContain('1650h');
+  });
+
+  it('muestra las horas de guardia, de refuerzo y el total en la primera fila', () => {
+    fixture.componentRef.setInput('stats', mockStats);
+    fixture.detectChanges();
+
+    const labels = Array.from(fixture.nativeElement.querySelectorAll('.stat-label')).map((el: any) =>
+      el.textContent.trim(),
+    );
+    expect(labels).toContain('Guardias');
+    expect(labels).toContain('Refuerzos');
+    expect(labels).toContain('Total');
+
+    const statValues = Array.from(fixture.nativeElement.querySelectorAll('.stat-value')).map((el: any) =>
+      el.textContent.trim(),
+    );
+    expect(statValues).toContain('1500h');
+    expect(statValues).toContain('150h');
+    expect(statValues).toContain('1650h');
   });
 
   it('should display current month hours', () => {

@@ -8,11 +8,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 
 import { AppConfigService } from '../config/app-config.service';
-import { formatClockTime } from '../common/date.utils';
+import { formatClockTime, fromIsoDate } from '../common/date.utils';
 import { HolidaysService, classifyDay, classifyYear } from '../holidays/holidays.service';
 import { InfeasiblePoolError, generateRotas } from '../scheduling/assignment.service';
 import { DEFAULT_ASSIGNMENT_STRATEGY } from '../scheduling/strategies';
-import { apShiftDetails } from '../scheduling/shifts';
+import { refuerzoShiftDetails } from '../scheduling/shifts';
 import { PreviousYear, PreviousYearRota } from '../scheduling/continuation';
 import { DayType, DoctorInput, RotaSchedule, ShiftRole } from '../scheduling/scheduling.types';
 import { AddDoctorDto } from './dto/add-doctor.dto';
@@ -277,7 +277,8 @@ export class RotaService {
         await assignmentRepository.save(assignment);
       } else {
         // Entre grupos sólo se cambia el refuerzo, que es común a AC y AP: la fila sale
-        // del cuadrante del médico saliente y entra en el del entrante con el horario AP.
+        // del cuadrante del médico saliente y entra en el del entrante con el horario
+        // de refuerzo.
         if (assignment.role !== 'refuerzo') {
           throw new BadRequestException(
             `Sólo se puede sustituir un refuerzo de otro grupo; ${request.old_doctor_id} hace la guardia ${oldRotaType} el ${request.date}.`,
@@ -314,7 +315,7 @@ export class RotaService {
         );
       }
 
-      // Tanto en AC como en AP se añade un refuerzo, con el horario AP del tipo de día.
+      // Tanto en AC como en AP se añade un refuerzo, con el horario de refuerzo del día.
       await assignmentRepository.save(
         this.newRefuerzo(assignmentRepository, rota.id, request.date, dayAssignments[0].dayType, request.doctor_id),
       );
@@ -352,7 +353,7 @@ export class RotaService {
     dayType: string,
     doctorId: string,
   ): RotaAssignmentEntity {
-    const shift = apShiftDetails(dayType as DayType);
+    const shift = refuerzoShiftDetails(fromIsoDate(date), dayType as DayType);
     return assignmentRepository.create({
       rotaId,
       date,

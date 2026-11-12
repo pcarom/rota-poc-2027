@@ -3,7 +3,8 @@ import type { AssignmentStrategyId } from './strategies/assignment-strategy';
 export type RotaType = 'AC' | 'AP';
 export type DayType = 'weekday' | 'saturday' | 'holiday';
 // Guardia: la plaza principal del día de cada grupo (AC o AP). Refuerzo: plaza adicional
-// con horario AP, cubierta por un AP o, si le faltan horas en el mes, por un AC.
+// con su propio horario de refuerzo, cubierta por un AP o, si le faltan horas en el mes,
+// por un AC.
 export type ShiftRole = 'guardia' | 'refuerzo';
 
 export interface DoctorInput {
@@ -44,6 +45,9 @@ export interface DayAssignment extends DayInfo {
 export interface DoctorStats {
   doctorId: string;
   doctorName: string;
+  // guardiaHours + refuerzoHours === totalHours siempre.
+  guardiaHours: number;
+  refuerzoHours: number;
   totalHours: number;
   targetHours: number;
   hoursVsTarget: number;

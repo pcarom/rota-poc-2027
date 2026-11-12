@@ -308,7 +308,7 @@ footer code { font-family: var(--font-mono); font-size: 0.8rem; overflow-wrap: a
     <div class="cal-wrap"><div class="cal" id="cal"></div></div>
     <p class="note" id="sc-note"></p>
     <div class="summary">
-      <h3 id="sum-title">Resumen del año 2026</h3>
+      <h3 id="sum-title">Resumen del año 2027</h3>
       <div class="sum-wrap"><table class="sum" id="sum"></table></div>
     </div>
   </section>
@@ -403,7 +403,7 @@ footer code { font-family: var(--font-mono); font-size: 0.8rem; overflow-wrap: a
   </section>
 
   <footer>
-    <p>Simulación generada en el navegador con la misma lógica que <code>backend/src/scheduling/strategies/wheels.strategy.ts</code> (<code>assignWithWheels</code>; la rueda única es su opción <code>singleGuardiaWheel</code>, que usa <code>single-wheel.strategy.ts</code>). No incluye el barajado del grupo, la continuación del año anterior (simula un año sin cuadrante previo) ni los refuerzos que hace un AC para llegar a 135 h al mes: las horas de las tablas son sólo de guardia. Festivos de 2026 en Alicante (Comunidad Valenciana) y festivos especiales de sanidad. Grupos de ejemplo tomados del grupo de médicos de la aplicación.</p>
+    <p>Simulación generada en el navegador con la misma lógica que <code>backend/src/scheduling/strategies/wheels.strategy.ts</code> (<code>assignWithWheels</code>; la rueda única es su opción <code>singleGuardiaWheel</code>, que usa <code>single-wheel.strategy.ts</code>). No incluye el barajado del grupo, la continuación del año anterior (simula un año sin cuadrante previo) ni los refuerzos que hace un AC para llegar a 135 h al mes: las horas de las tablas son sólo de guardia. Horario desde 2027: guardia de lunes a jueves 17h, viernes 18h, sábado 24h (festivo o no) y domingo o festivo entre semana 23h; refuerzo de lunes a viernes 7h y de sábado, domingo o festivo 12h, con dos refuerzos todos los sábados. Festivos de 2027 en Alicante (Comunidad Valenciana) y festivos especiales de sanidad. Grupos de ejemplo tomados del grupo de médicos de la aplicación.</p>
   </footer>
 </div>
 
@@ -493,10 +493,12 @@ function simulate(pool, days, { breakWeeklyResonance = true, singleGuardiaWheel 
   return { initial, steps };
 }
 
-const HOLIDAYS_2026 = ['2026-01-01', '2026-01-06', '2026-03-19', '2026-04-03', '2026-04-06', '2026-05-01', '2026-06-24', '2026-08-15', '2026-10-09', '2026-10-12', '2026-12-08', '2026-12-24', '2026-12-25', '2026-12-31'];
+const HOLIDAYS_2027 = ['2027-01-01', '2027-01-06', '2027-03-26', '2027-03-29', '2027-05-01', '2027-06-24', '2027-08-15', '2027-10-09', '2027-10-12', '2027-11-01', '2027-12-06', '2027-12-08', '2027-12-25'];
 const SPECIAL = ['01-01', '01-06', '12-24', '12-25', '12-31'];
 const isSpecial = (iso) => SPECIAL.includes(iso.slice(5));
 
+// Refuerzos desde 2027: festivo especial, sábado (festivo o no) o segundo festivo
+// consecutivo (domingo incluido) llevan 2; el resto, 1. La visualización sólo simula 2027.
 function buildDays(startIso, endIso, holidays, withRefuerzos) {
   const days = [];
   for (let d = new Date(startIso + 'T00:00:00Z'); d.toISOString().slice(0, 10) <= endIso; d.setUTCDate(d.getUTCDate() + 1)) {
@@ -507,7 +509,7 @@ function buildDays(startIso, endIso, holidays, withRefuerzos) {
     const hol = pub || weekday === 0;
     const prevHol = holidays.includes(prev) || isSpecial(prev) || p.getUTCDay() === 0;
     const special = isSpecial(iso);
-    days.push({ iso, prev, weekday, n: d.getUTCDate(), publicHoliday: pub, special, guardias: 1, refuerzos: withRefuerzos ? (special || (hol && prevHol) ? 2 : 1) : 0 });
+    days.push({ iso, prev, weekday, n: d.getUTCDate(), publicHoliday: pub, special, guardias: 1, refuerzos: withRefuerzos ? (special || weekday === 6 || (hol && prevHol) ? 2 : 1) : 0 });
   }
   return days;
 }
@@ -522,7 +524,7 @@ const AC_7 = [...AC_5, 'Blanco', 'Serrano'];
 const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
 function yearScenario(pool, withRef, month, startAt, note, label, opts = {}) {
-  const sim = simulate(pool, buildDays('2026-01-01', '2026-12-31', HOLIDAYS_2026, withRef), opts);
+  const sim = simulate(pool, buildDays('2027-01-01', '2027-12-31', HOLIDAYS_2027, withRef), opts);
   return { pool, withRef, sim, month, startAt, note, label };
 }
 const SINGLE = { singleGuardiaWheel: true };
@@ -531,7 +533,7 @@ const firstGuardiaSkip = (sc) => sc.sim.steps.findIndex((s) => s.events.some((e)
 const MODES = { single: {}, wheels: {} };
 MODES.single = {
   ac4: yearScenario(AC_POOL, false, 3, 7,
-    'Grupo AC real de 4 médicos, sólo guardias, año 2026. La rueda de guardias no distingue el tipo de día: tras el viernes viene el sábado del siguiente de la lista, y así todo el año. Sin refuerzos en la simulación no hay saltos: cada médico hace una guardia de cada cuatro días.',
+    'Grupo AC real de 4 médicos, sólo guardias, año 2027. La rueda de guardias no distingue el tipo de día: tras el viernes viene el sábado del siguiente de la lista, y así todo el año. Sin refuerzos en la simulación no hay saltos: cada médico hace una guardia de cada cuatro días.',
     'AC · 4 médicos', SINGLE),
   ac7: yearScenario(AC_7, false, 1, 8,
     'Un grupo AC hipotético de 7 médicos, múltiplo de 7. Sin corrección, cada médico caería siempre el mismo día de la semana. Con ella, cada 7 días la rueda gira un puesto sin deuda (paso morado ↷): el saltado hace el último día de la vuelta y el día de cada uno va rotando. Ver «Cuando el grupo va al compás de la semana» más abajo.',
@@ -551,14 +553,14 @@ MODES.single = {
   }
 }
 MODES.wheels = {
-  ac4: yearScenario(AC_POOL, false, 3, 19,
-    'Grupo AC real de 4 médicos, sólo guardias, año 2026 completo. Con 4 médicos los saltos son raros: aparecen alrededor de los festivos. En marzo, el jueves 19 es San José y el viernes 20 a López le toca pero trabajó el jueves.',
+  ac4: yearScenario(AC_POOL, false, 3, 25,
+    'Grupo AC real de 4 médicos, sólo guardias, año 2027 completo. Con 4 médicos los saltos son raros: aparecen alrededor de los festivos. En marzo, a López le toca el jueves 25 y también le tocaría el viernes 26, Viernes Santo, en la rueda de festivos; como trabajó el jueves, se le salta y cubre Martínez.',
     'AC · 4 médicos'),
   ac5: yearScenario(AC_5, false, 2, 1,
     'El mismo grupo AC con un quinto médico. Con 5 médicos la rueda de laborables daría una vuelta exacta por semana y cada médico caería siempre el mismo día. Para evitarlo, cada lunes de semana completa la rueda gira un puesto sin deuda (paso morado ↷). Ver «La resonancia» más abajo.',
     'AC · 5 médicos'),
   ap: yearScenario(AP_POOL, true, 1, 0,
-    'Ejemplo AP con 8 médicos, guardia y refuerzo. Aguja sólida: guardia. Aguja discontinua naranja: refuerzo. Los festivos especiales (1 y 6 de enero, 24, 25 y 31 de diciembre) llevan dos refuerzos.',
+    'Ejemplo AP con 8 médicos, guardia y refuerzo. Aguja sólida: guardia. Aguja discontinua naranja: refuerzo. Los festivos especiales (1 y 6 de enero, 24, 25 y 31 de diciembre) y todos los sábados llevan dos refuerzos.',
     'AP · guardia y refuerzo'),
 };
 
@@ -739,13 +741,18 @@ function play() {
   $('b-play').textContent = '⏸ Pausa';
   timer = setInterval(() => { if (idx >= total()) return stop(); go(idx + 1); }, 1500);
 }
-// Horas de guardia AC por tipo de día (los domingos cuentan como festivo)
-const AC_HOURS = { weekday: 17, saturday: 18, sunday: 23, holiday: 23 };
+// Horas de guardia desde 2027: sábado siempre 24h (festivo o no); domingo o festivo
+// entre semana 23h; viernes laborable 18h; resto de laborables 17h.
+function guardiaHoursFor(day) {
+  if (day.weekday === 6) return 24;
+  if (day.publicHoliday || day.weekday === 0) return 23;
+  return day.weekday === 5 ? 18 : 17;
+}
 function tally(sim, pool) {
   const rows = Object.fromEntries(pool.map((d) => [d, { weekday: 0, saturday: 0, sunday: 0, holiday: 0, g: 0, r: 0, skips: 0, hours: 0 }]));
   for (const s of sim.steps) {
     for (const c of s.chosen) {
-      if (c.role === 'guardia') { rows[c.doctor][s.wheelId]++; rows[c.doctor].g++; rows[c.doctor].hours += AC_HOURS[s.wheelId]; }
+      if (c.role === 'guardia') { rows[c.doctor][s.wheelId]++; rows[c.doctor].g++; rows[c.doctor].hours += guardiaHoursFor(s.day); }
       else rows[c.doctor].r++;
     }
     for (const e of s.events) if (e.kind === 'salto') rows[e.doctor].skips++;
@@ -756,7 +763,7 @@ function renderSummary() {
   const sc = scen();
   const rows = tally(sc.sim, sc.pool);
   const cols = sc.withRef ? [['g', 'Guardias'], ['r', 'Refuerzos']] : WHEELS.map((w) => [w, WHEEL_NAME[w]]).concat([['hours', 'Horas']]);
-  $('sum-title').textContent = `Resumen del año 2026 · ${sc.pool.length} médicos ${sc.withRef ? 'AP' : 'AC'}`;
+  $('sum-title').textContent = `Resumen del año 2027 · ${sc.pool.length} médicos ${sc.withRef ? 'AP' : 'AC'}`;
   $('sum').innerHTML = `<thead><tr><th>Médico</th>${cols.map(([, n]) => `<th>${n}</th>`).join('')}<th>${sc.withRef ? '' : 'Total'}</th><th>Veces saltado</th></tr></thead><tbody>` +
     sc.pool.map((d) => {
       const r = rows[d];
@@ -825,7 +832,7 @@ document.addEventListener('keydown', (e) => {
 // ---------- Resonancia: 5 médicos AC, antes y después de la corrección ----------
 (function drawResonance() {
   const pool = AC_5;
-  const weeks = buildDays('2026-02-02', '2026-03-08', HOLIDAYS_2026, false);
+  const weeks = buildDays('2027-02-01', '2027-03-07', HOLIDAYS_2027, false);
   const grid = (id, sim) => {
     let html = '<div></div>' + ['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((d) => `<div class="h">${d}</div>`).join('');
     sim.steps.forEach((s, i) => {
@@ -844,8 +851,8 @@ document.addEventListener('keydown', (e) => {
   const beforeFridays = fridays(before);
   const fridayDoc = beforeFridays[0];
 
-  // Año 2026 completo, con y sin corrección
-  const year = buildDays('2026-01-01', '2026-12-31', HOLIDAYS_2026, false);
+  // Año 2027 completo, con y sin corrección
+  const year = buildDays('2027-01-01', '2027-12-31', HOLIDAYS_2027, false);
   const stats = (opts) => {
     const sim = simulate(pool, year, opts), fr = fridays(sim);
     const per = Object.fromEntries(pool.map((d) => [d, { fri: 0, tot: 0 }]));
@@ -857,14 +864,14 @@ document.addEventListener('keydown', (e) => {
   };
   const off = stats({ breakWeeklyResonance: false }), on = stats({});
   const maxFri = (st) => Math.max(...pool.map((d) => st.per[d].fri));
-  $('reso-stats').innerHTML = `<h3>Año 2026 completo · viernes por médico</h3>
+  $('reso-stats').innerHTML = `<h3>Año 2027 completo · viernes por médico</h3>
     <table><thead><tr><th>Médico</th><th>Sin corrección</th><th>Con giro</th><th>Guardias totales (con giro)</th></tr></thead><tbody>
     ${pool.map((d) => `<tr><td>${chip(d, pool)}</td><td class="${off.per[d].fri === maxFri(off) ? 'bad' : ''}">${off.per[d].fri}</td><td>${on.per[d].fri}</td><td>${on.per[d].tot}</td></tr>`).join('')}
     <tr><td>Máx. viernes seguidos</td><td class="bad">${off.best}</td><td>${on.best}</td><td></td></tr></tbody></table>`;
 
   $('reso-text').innerHTML = `
     <h3>Con 5 médicos, el Dr. ${fridayDoc} haría todos los viernes</h3>
-    <p>Con <b>5 médicos y 5 laborables por semana</b>, la rueda de laborables da exactamente una vuelta cada semana: cada médico cae siempre el mismo día. A quien le toca el viernes le correspondería descansar el sábado, así que la rueda de sábados lo salta una y otra vez. En 2026 eso son <b>${maxFri(off)} viernes</b> para un mismo médico, <b>${off.best} seguidos</b>.</p>
+    <p>Con <b>5 médicos y 5 laborables por semana</b>, la rueda de laborables da exactamente una vuelta cada semana: cada médico cae siempre el mismo día. A quien le toca el viernes le correspondería descansar el sábado, así que la rueda de sábados lo salta una y otra vez. En 2027 eso son <b>${maxFri(off)} viernes</b> para un mismo médico, <b>${off.best} seguidos</b>.</p>
     <p><b>La corrección, como se hace a mano:</b> el lunes de cada semana con 5 laborables, la rueda de laborables gira un puesto y se salta al que le tocaba <b>sin apuntarle deuda</b> (los lunes con borde discontinuo). Ese médico hace el viernes de esa misma semana, así que nadie pierde guardias, y el día de cada uno va rotando.</p>
     <p>No se gira en semanas con un festivo entre semana, que ya descolocan la rueda por sí solas. Sólo se aplica con exactamente 5 médicos: con 4 o 17 el cuadrante no cambia.</p>
     <p><b>Con 10, 15 o 20 médicos</b> hay una resonancia más suave: la rueda de laborables da la vuelta en 2, 3 o 4 semanas y a cada médico le tocan casi siempre los mismos días laborables (ver la tabla). No se corrige: los sábados, domingos y festivos tienen sus propias ruedas y siguen repartidos con ±1, igual que las horas. La rueda única tiene su propia corrección para los grupos múltiplos de 7 (ver la pestaña «Rueda única»).</p>`;
@@ -873,12 +880,12 @@ document.addEventListener('keydown', (e) => {
     return { n, v: weekdaySpread(simulate(p, year), p) };
   });
   $('reso-stats').innerHTML += `<h3>Otros tamaños · máx. diferencia en un mismo día de la semana</h3>
-    <table><thead><tr><th>Médicos</th><th>Año 2026</th></tr></thead><tbody>
+    <table><thead><tr><th>Médicos</th><th>Año 2027</th></tr></thead><tbody>
     ${others.map((r) => `<tr><td>${r.n}${r.n % 5 ? '' : ' (múltiplo de 5)'}</td><td class="${r.v > 10 ? 'bad' : ''}">${r.v}</td></tr>`).join('')}
     </tbody></table>`;
 })();
 
-// ---------- Rueda única frente a Ruedas: AC 4 y AP 8, año 2026 ----------
+// ---------- Rueda única frente a Ruedas: AC 4 y AP 8, año 2027 ----------
 (function drawComparison() {
   const cats = [['saturday', 'Sáb'], ['sunday', 'Dom'], ['holiday', 'Fest']];
   const acW = tally(MODES.wheels.ac4.sim, AC_POOL), acS = tally(MODES.single.ac4.sim, AC_POOL);
@@ -893,7 +900,7 @@ document.addEventListener('keydown', (e) => {
 
   const hS = range(acS, 'hours'), hW = range(acW, 'hours'), fS = range(acS, 'holiday'), fW = range(acW, 'holiday');
   $('cmp-text').innerHTML = `
-    <p>Guardias AC de 2026 con el grupo real de 4 médicos, en el orden de la lista. Con la <b>rueda única</b> cada médico hace una guardia de cada cuatro días, sea del tipo que sea: el número de guardias queda igualado y las horas varían entre <b>${hS[0]} y ${hS[1]} h</b> (con Ruedas, entre ${hW[0]} y ${hW[1]} h).</p>
+    <p>Guardias AC de 2027 con el grupo real de 4 médicos, en el orden de la lista. Con la <b>rueda única</b> cada médico hace una guardia de cada cuatro días, sea del tipo que sea: el número de guardias queda igualado y las horas varían entre <b>${hS[0]} y ${hS[1]} h</b> (con Ruedas, entre ${hW[0]} y ${hW[1]} h).</p>
     <p>El precio es que <b>nadie vigila el tipo de día</b>: los sábados, domingos y festivos caen donde caigan en la rueda. Los festivos por médico van de <b>${fS[0]} a ${fS[1]}</b> con la rueda única, frente a ${fW[0]}–${fW[1]} con Ruedas, que reparte cada tipo con ±1. En AP la guardia sigue la misma lógica, y los refuerzos usan las mismas cuatro ruedas en los dos métodos.</p>`;
 })();
 
@@ -906,11 +913,11 @@ function weekdaySpread(sim, pool) {
 }
 (function drawSeven() {
   const pool = AC_7;
-  const yearDays = buildDays('2026-01-01', '2026-12-31', HOLIDAYS_2026, false);
-  // Año completo desde el 1 de enero; las rejillas enseñan 5 semanas de él (2 feb – 8 mar).
+  const yearDays = buildDays('2027-01-01', '2027-12-31', HOLIDAYS_2027, false);
+  // Año completo desde el 1 de enero; las rejillas enseñan 5 semanas de él (1 feb – 7 mar).
   const grid = (id, sim) => {
     let html = '<div></div>' + ['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((d) => `<div class="h">${d}</div>`).join('');
-    sim.steps.filter((s) => s.day.iso >= '2026-02-02' && s.day.iso <= '2026-03-08').forEach((s, i) => {
+    sim.steps.filter((s) => s.day.iso >= '2027-02-01' && s.day.iso <= '2027-03-07').forEach((s, i) => {
       if (i % 7 === 0) html += `<div class="wk">Sem. ${i / 7 + 1}</div>`;
       const d = s.chosen[0].doctor;
       const giro = s.events.some((e) => e.kind === 'giro');
@@ -930,12 +937,12 @@ function weekdaySpread(sim, pool) {
   };
   const sb = sundays(before), sa = sundays(after);
   const [top] = Object.entries(sb).sort((a, b) => b[1] - a[1]);
-  // Otros tamaños, sólo guardias, año 2026
+  // Otros tamaños, sólo guardias, año 2027
   const sizes = [7, 8, 14, 21].map((n) => {
     const p = Array.from({ length: n }, (_, i) => (i < AP_17.length ? AP_17[i] : `M${i}`));
     return { n, off: weekdaySpread(simulate(p, yearDays, { ...SINGLE, breakLapResonance: false }), p), on: weekdaySpread(simulate(p, yearDays, SINGLE), p) };
   });
-  $('seven-stats').innerHTML = `<h3>Año 2026 · domingos por médico (7 médicos)</h3>
+  $('seven-stats').innerHTML = `<h3>Año 2027 · domingos por médico (7 médicos)</h3>
     <table><thead><tr><th>Médico</th><th>Sin corrección</th><th>Con giro</th></tr></thead><tbody>
     ${pool.map((d) => `<tr><td>${chip(d, pool)}</td><td class="${sb[d] === top[1] ? 'bad' : ''}">${sb[d]}</td><td>${sa[d]}</td></tr>`).join('')}
     </tbody></table>

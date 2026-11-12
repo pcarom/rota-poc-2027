@@ -19,6 +19,12 @@ export interface DoctorRef {
   doctor_id: string;
   doctor_name: string;
   role: ShiftRole;
+  // Horas e inicio/fin reales de esta asignación (mismo formato que los del día:
+  // formatClockTime/formatShiftEnd, p. ej. "15:00", "08:00+1"). En una guardia coincide
+  // con el horario del día; en un refuerzo es el suyo propio.
+  duration_hours: number;
+  shift_start: string;
+  shift_end: string;
 }
 
 export interface DayInfo {
@@ -41,6 +47,9 @@ export interface DayAssignment {
 export interface DoctorStats {
   doctor_id: string;
   doctor_name: string;
+  // guardia_hours + refuerzo_hours === total_hours siempre.
+  guardia_hours: number;
+  refuerzo_hours: number;
   total_hours: number;
   target_hours: number;
   hours_vs_target: number;
