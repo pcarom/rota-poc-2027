@@ -8,10 +8,10 @@ Esta es una Prueba de Concepto (PoC): sin autenticación, sin multi-ciudad, sin 
 
 ## 2. Modelo de dominio: AC y AP
 
-AC y AP son dos rotas independientes en cuanto a generación, pero conectadas en cuanto al servicio que prestan:
+AC y AP son dos rotas con grupos de médicos separados, pero conectadas en la generación y en el servicio que prestan: los dos cuadrantes se generan juntos con una sola acción, porque los refuerzos que hace un AC se descuentan de los de AP:
 
 - Los profesionales de **AC** trabajan exclusivamente como guardias y son los responsables principales de la cobertura del día.
-- Los profesionales de **AP** **refuerzan cada día** la cobertura de AC. Aunque la rota se genera por separado, el rol funcional en el calendario es el de **refuerzo del día**.
+- Los profesionales de **AP** **refuerzan cada día** la cobertura de AC. Aunque cada rota tiene su propio grupo y cuadrante, el rol funcional en el calendario es el de **refuerzo del día**.
 
 Un médico pertenece a un único grupo (AC o AP) y nunca participa en la rota del otro.
 
@@ -47,7 +47,7 @@ Sin migración de datos: un cuadrante generado antes de un cambio de horario con
    - AP: máximo 425 h/año (tope, no mínimo).
    - Si algún profesional incumple su límite (AC por debajo, AP por encima), el cuadrante se genera igualmente con un aviso y las estadísticas muestran la desviación de cada médico.
 2. **Día de descanso**: un médico de guardia el día D queda libre el D+1 dentro de la misma rota. Restricción suavizable en pools muy pequeños.
-3. **AC y AP se generan de forma independiente**: un mismo médico no puede aparecer en ambas rotas.
+3. **Grupos separados, generación conjunta**: un mismo médico no puede aparecer en ambas rotas. Los dos cuadrantes se generan juntos con una sola acción, porque los refuerzos que hace un AC se descuentan de los de AP.
 4. **Cobertura primary base = 1**: el algoritmo nunca asigna más de un AC primary por día ni más de un AP primary por día, salvo cuando el día lleva 2 refuerzos (festivos especiales de sanidad, segundo de dos festivos consecutivos y, desde 2027, todos los sábados; nunca más de 2, ver sección 3). Con pools AC que exceden la capacidad de cobertura anual, o pools AP demasiado pequeños para respetar el máximo de 425 h, el cuadrante se genera igualmente y se devuelve un aviso.
 
 ## 6. Equidad
@@ -56,16 +56,21 @@ Las asignaciones se distribuyen equitativamente entre los profesionales del pool
 
 ## 7. Datos de entrada
 
+Una sola petición genera los dos cuadrantes; cada grupo se asigna en el orden en que llega. `team_id` (por defecto, el equipo principal) y `strategy` (`single-wheel`, predeterminada, o `wheels`) son opcionales.
+
 ```json
 {
   "year": 2026,
-  "rota_type": "AC",
-  "pool": [
+  "team_id": 1,
+  "strategy": "single-wheel",
+  "ac_pool": [
     {
       "id": "doc-001",
       "name": "Dra. García",
       "department": "Medicina General"
-    },
+    }
+  ],
+  "ap_pool": [
     {
       "id": "doc-002",
       "name": "Dr. López",
@@ -99,7 +104,7 @@ El sistema consulta una API externa de festivos españoles (por defecto `https:/
 
 - **Stack**: NestJS 11, TypeScript, class-validator, TypeORM, MySQL.
 - **Endpoints principales**:
-  - `POST /api/v1/rota/generate` — genera la rota anual.
+  - `POST /api/v1/rota/generate` — genera a la vez los cuadrantes anuales AC y AP.
   - `GET /api/v1/rota/:year/:rotaType` — consulta una rota (soporta filtro por `doctor_id`).
   - `GET /api/v1/rota/:year` — devuelve las rotas (AC y AP) del año.
   - `PATCH /api/v1/rota/:year/:rotaType/replace` — reemplaza un profesional.
