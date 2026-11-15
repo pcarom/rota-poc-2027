@@ -35,48 +35,33 @@ export interface WheelContinuation {
 }
 
 /**
- * Orden del grupo actual continuando el del año anterior: los que siguen, en el orden
- * de entonces, y después los nuevos en el orden de la petición. Usa los objetos del
- * grupo actual. `null` si no queda ningún superviviente (no hay nada que continuar).
- */
-export function continuePoolOrder(
-  previousOrder: DoctorInput[],
-  pool: DoctorInput[],
-): DoctorInput[] | null {
-  const currentById = new Map(pool.map((doctor) => [doctor.id, doctor]));
-  const survivors = previousOrder.flatMap((doctor) => currentById.get(doctor.id) ?? []);
-  if (survivors.length === 0) {
-    return null;
-  }
-
-  const survivorIds = new Set(survivors.map((doctor) => doctor.id));
-  return [...survivors, ...pool.filter((doctor) => !survivorIds.has(doctor.id))];
-}
-
-/**
- * Puntero que sigue al último médico de una rueda en el año anterior. Si ese médico
- * estaba en el grupo de entonces, cuenta los supervivientes hasta su posición (el
- * siguiente si sigue; el siguiente superviviente si se fue; el primer nuevo, o el 0, si
- * era el último). Si no estaba pero está ahora, el siguiente a él.
+ * Puntero (posición en el grupo actual, en el orden de la petición) que sigue al último
+ * médico de una rueda en el año anterior: el siguiente a él si sigue en el grupo; si se
+ * fue, el siguiente superviviente tras él en el orden de entonces (circular). `undefined`
+ * si no estaba ni está: esa rueda arranca por defecto.
  */
 function nextPointer(
   lastDoctorId: string,
   previousOrder: DoctorInput[],
-  orderedPool: DoctorInput[],
+  positionById: ReadonlyMap<string, number>,
 ): number | undefined {
-  const size = orderedPool.length;
-  const currentIds = new Set(orderedPool.map((doctor) => doctor.id));
-  const previousPosition = previousOrder.findIndex((doctor) => doctor.id === lastDoctorId);
-
-  if (previousPosition >= 0) {
-    const survivorsUpToLast = previousOrder
-      .slice(0, previousPosition + 1)
-      .filter((doctor) => currentIds.has(doctor.id)).length;
-    return survivorsUpToLast % size;
+  const current = positionById.get(lastDoctorId);
+  if (current !== undefined) {
+    return (current + 1) % positionById.size;
   }
 
-  const currentPosition = orderedPool.findIndex((doctor) => doctor.id === lastDoctorId);
-  return currentPosition >= 0 ? (currentPosition + 1) % size : undefined;
+  const previousPosition = previousOrder.findIndex((doctor) => doctor.id === lastDoctorId);
+  if (previousPosition < 0) {
+    return undefined;
+  }
+  for (let step = 1; step < previousOrder.length; step += 1) {
+    const candidate = previousOrder[(previousPosition + step) % previousOrder.length];
+    const position = positionById.get(candidate.id);
+    if (position !== undefined) {
+      return position;
+    }
+  }
+  return undefined;
 }
 
 /**
@@ -84,13 +69,19 @@ function nextPointer(
  * el médico siguiente al último que hizo un turno de esa rueda. Los días se
  * reclasifican con `previousDays` (las filas guardadas no saben qué día era festivo
  * oficial). `previous.assignments` debe venir ordenada por fecha y, dentro del día, por id.
+ * `undefined` si ningún médico del orden anterior sigue en `pool` (nada que continuar).
  */
 export function buildWheelContinuation(
   rotaType: RotaType,
   previous: PreviousYearRota,
   previousDays: DayInfo[],
-  orderedPool: DoctorInput[],
-): WheelContinuation {
+  pool: DoctorInput[],
+): WheelContinuation | undefined {
+  const positionById = new Map(pool.map((doctor, index) => [doctor.id, index]));
+  if (!previous.poolOrder.some((doctor) => positionById.has(doctor.id))) {
+    return undefined;
+  }
+
   const wheelByDate = new Map(previousDays.map((day) => [toIsoDate(day.date), wheelForDay(day)]));
   const lastDate = previousDays.length > 0 ? toIsoDate(previousDays[previousDays.length - 1].date) : '';
 
@@ -115,7 +106,7 @@ export function buildWheelContinuation(
     }
   }
 
-  const next = (doctorId: string) => nextPointer(doctorId, previous.poolOrder, orderedPool);
+  const next = (doctorId: string) => nextPointer(doctorId, previous.poolOrder, positionById);
   const pointersOf = (lastByWheel: Map<WheelId, string>): Partial<Record<WheelId, number>> => {
     const pointers: Partial<Record<WheelId, number>> = {};
     for (const [wheel, doctorId] of lastByWheel) {

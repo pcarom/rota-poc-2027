@@ -52,7 +52,7 @@ describe('DoctorPoolService', () => {
     expect(service.doctors()[0].name).toBe('Dr. Garcia');
   });
 
-  it('al cambiar de equipo sustituye los médicos y olvida el orden barajado', () => {
+  it('al cambiar de equipo sustituye los médicos y olvida el orden de generación', () => {
     service.loadTeam(team(mockDoctors));
     service.applyOrder('AC', ['doc-002', 'doc-001']);
 

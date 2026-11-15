@@ -81,15 +81,12 @@ export class RotaService {
         dayClassifications,
         dayBeforeYear,
         request.strategy ?? DEFAULT_ASSIGNMENT_STRATEGY,
-        // Cada grupo sin cuadrante del año anterior se baraja para no empezar todos los años
-        // por el mismo médico; los que lo tienen lo continúan y no usan la aleatoriedad.
-        Math.random,
         previousYear,
       );
 
       const persisted = await this.dataSource.transaction(async (manager) => [
-        await this.persistRota(manager, teamId, request.year, rotas.ac, rotas.ac.poolOrder),
-        await this.persistRota(manager, teamId, request.year, rotas.ap, rotas.ap.poolOrder),
+        await this.persistRota(manager, teamId, request.year, rotas.ac, request.ac_pool),
+        await this.persistRota(manager, teamId, request.year, rotas.ap, request.ap_pool),
       ]);
 
       return [

@@ -46,7 +46,7 @@ Este documento resume el backend NestJS actual ahora que la implementación en P
 ## Modelo de Datos
 
 - `teams`: equipos con nombre único y su lista de médicos (`doctors` JSON con `rota_type`).
-- `rotas`: una rota persistida por `(equipo, año, tipo_rota)` más la instantánea del grupo original (`pool`), guardada en el orden con que se generó el cuadrante (barajado o continuado): el año siguiente lo lee para continuarlo.
+- `rotas`: una rota persistida por `(equipo, año, tipo_rota)` más la instantánea del grupo original (`pool`), guardada en el orden con que se generó el cuadrante (el de la petición, que es el que muestra la interfaz al generar); el año siguiente lo lee para situar el arranque de sus ruedas.
 - `rota_doctors`: miembros del grupo normalizados para una rota.
 - `rota_assignments`: una fila por asignación. En AP, un festivo precedido de otro festivo (o, desde 2027, cualquier sábado) tiene dos filas por fecha (segundo refuerzo), cada una con distinto `doctor_id`. La columna `duration_hours` de la guardia es la misma en AC y AP para la misma fecha (duración del día calendario, en todos los años); sólo el refuerzo usa su propio horario (7h o 12h, `scheduling/shifts.ts`), que nunca coincide con el de la guardia del día.
 - `holidays`: filas de festivos en caché indexadas por `(año, ciudad, fecha)`. Contiene una columna `source ('api' | 'manual')` para distinguir los festivos obtenidos de la API externa de los creados por el usuario.
