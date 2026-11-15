@@ -2,7 +2,6 @@ import {
   PreviousAssignment,
   PreviousYearRota,
   buildWheelContinuation,
-  continuePoolOrder,
 } from '../../src/scheduling/continuation';
 import { classifyYear } from '../../src/holidays/holidays.service';
 import { DoctorInput } from '../../src/scheduling/scheduling.types';
@@ -13,7 +12,6 @@ const doctor = (id: string, name = `Dr. ${id}`): DoctorInput => ({
   department: 'Medicina General',
 });
 const doctors = (...ids: string[]): DoctorInput[] => ids.map((id) => doctor(id));
-const ids = (pool: DoctorInput[] | null) => pool?.map((entry) => entry.id);
 
 // Diciembre de 2025: 24 (mié) y 25 (jue) festivos especiales, 26 (vie) laborable, 27 sábado,
 // 28 domingo normal, 29 (lun) y 30 (mar) laborables, 31 (mié) festivo especial.
@@ -34,28 +32,18 @@ const previousRota = (order: DoctorInput[], assignments: PreviousAssignment[]): 
   assignments,
 });
 
-describe('continuePoolOrder', () => {
-  const previousOrder = doctors('C', 'A', 'D', 'B');
-
-  it('conserva el orden del año anterior de los médicos que siguen', () => {
-    expect(ids(continuePoolOrder(previousOrder, doctors('A', 'B', 'C', 'D')))).toEqual(['C', 'A', 'D', 'B']);
-  });
-
-  it('quita a los que se fueron y añade al final a los nuevos en el orden de la petición', () => {
-    const result = continuePoolOrder(previousOrder, doctors('Z', 'B', 'Y', 'C'));
-    expect(ids(result)).toEqual(['C', 'B', 'Z', 'Y']);
-  });
-
-  it('usa los objetos del grupo actual (por si cambió el nombre)', () => {
-    const renamed = doctor('A', 'Dr. Nuevo nombre');
-    const result = continuePoolOrder(previousOrder, [renamed, doctor('C')]);
-    expect(result?.[1]).toBe(renamed);
-  });
-
-  it('devuelve null si no queda ningún superviviente', () => {
-    expect(continuePoolOrder(previousOrder, doctors('X', 'Y'))).toBeNull();
-  });
-});
+const build = (
+  rotaType: Parameters<typeof buildWheelContinuation>[0],
+  previous: PreviousYearRota,
+  days: typeof previousDays,
+  pool: DoctorInput[],
+) => {
+  const result = buildWheelContinuation(rotaType, previous, days, pool);
+  if (!result) {
+    throw new Error('se esperaba una continuación');
+  }
+  return result;
+};
 
 describe('buildWheelContinuation', () => {
   const order = doctors('A', 'B', 'C', 'D', 'E');
@@ -65,7 +53,7 @@ describe('buildWheelContinuation', () => {
       guardia('2025-12-30', 'B'),
       guardia('2025-12-31', 'C'),
     ]);
-    const result = buildWheelContinuation('AC', previous, previousDays, order);
+    const result = build('AC', previous, previousDays, order);
     expect(result.singleGuardia).toBe(3);
   });
 
@@ -77,13 +65,13 @@ describe('buildWheelContinuation', () => {
       guardia('2025-12-28', 'D'), // domingo normal
       guardia('2025-12-31', 'E'), // festivo especial (rueda de festivos)
     ]);
-    const result = buildWheelContinuation('AC', previous, previousDays, order);
+    const result = build('AC', previous, previousDays, order);
     expect(result.guardia).toEqual({ weekday: 2, saturday: 3, sunday: 4, holiday: 0 });
   });
 
   it('una rueda sin turnos queda sin puntero', () => {
     const previous = previousRota(order, [guardia('2025-12-29', 'A')]);
-    const result = buildWheelContinuation('AC', previous, previousDays, order);
+    const result = build('AC', previous, previousDays, order);
     expect(result.guardia).toEqual({ weekday: 1 });
     expect(result.refuerzo).toEqual({});
   });
@@ -91,29 +79,52 @@ describe('buildWheelContinuation', () => {
   it('si el último médico se fue, apunta al siguiente superviviente', () => {
     const previous = previousRota(order, [guardia('2025-12-31', 'C')]);
     const current = doctors('A', 'B', 'D', 'E');
-    expect(buildWheelContinuation('AC', previous, previousDays, current).singleGuardia).toBe(2);
+    expect(build('AC', previous, previousDays, current).singleGuardia).toBe(2);
   });
 
-  it('si era el último superviviente, apunta al primer médico nuevo', () => {
+  it('si era el último del orden anterior y se fue, da la vuelta al primer superviviente', () => {
     const previous = previousRota(order, [guardia('2025-12-31', 'E')]);
     const current = [...doctors('A', 'B', 'C', 'D'), doctor('N1'), doctor('N2')];
-    expect(buildWheelContinuation('AC', previous, previousDays, current).singleGuardia).toBe(4);
+    expect(build('AC', previous, previousDays, current).singleGuardia).toBe(0);
+  });
+
+  it('si el último médico sigue, apunta al siguiente en el orden actual, distinto del anterior', () => {
+    const previous = previousRota(order, [guardia('2025-12-31', 'C')]);
+    const current = doctors('E', 'D', 'C', 'B', 'A');
+    expect(build('AC', previous, previousDays, current).singleGuardia).toBe(3);
+  });
+
+  it('si el último médico se fue, apunta al siguiente superviviente del orden anterior, en su posición actual', () => {
+    const previous = previousRota(order, [guardia('2025-12-31', 'B')]);
+    const current = doctors('E', 'D', 'A');
+    expect(build('AC', previous, previousDays, current).singleGuardia).toBe(1);
+  });
+
+  it('si el último médico se fue y le seguían otros que también se fueron, salta hasta un superviviente', () => {
+    const previous = previousRota(order, [guardia('2025-12-31', 'C')]);
+    const current = doctors('B', 'A');
+    expect(build('AC', previous, previousDays, current).singleGuardia).toBe(1);
+  });
+
+  it('sin médicos en común con el orden anterior no hay nada que continuar', () => {
+    const previous = previousRota(order, [guardia('2025-12-31', 'C')]);
+    expect(buildWheelContinuation('AC', previous, previousDays, doctors('X', 'Y'))).toBeUndefined();
   });
 
   it('si era el último superviviente y no hay nuevos, apunta a 0', () => {
     const previous = previousRota(order, [guardia('2025-12-31', 'E')]);
-    expect(buildWheelContinuation('AC', previous, previousDays, order).singleGuardia).toBe(0);
+    expect(build('AC', previous, previousDays, order).singleGuardia).toBe(0);
   });
 
   it('si el último médico no estaba en el grupo del año anterior pero sí en el actual, apunta al siguiente', () => {
     const previous = previousRota(doctors('A', 'B', 'C'), [guardia('2025-12-31', 'N1')]);
     const current = [...doctors('A', 'B', 'C'), doctor('N1'), doctor('N2')];
-    expect(buildWheelContinuation('AC', previous, previousDays, current).singleGuardia).toBe(4);
+    expect(build('AC', previous, previousDays, current).singleGuardia).toBe(4);
   });
 
   it('si el último médico no está en ningún grupo, la rueda queda sin puntero', () => {
     const previous = previousRota(order, [guardia('2025-12-31', 'Z')]);
-    const result = buildWheelContinuation('AC', previous, previousDays, order);
+    const result = build('AC', previous, previousDays, order);
     expect(result.singleGuardia).toBeUndefined();
     expect(result.guardia).toEqual({});
   });
@@ -127,14 +138,14 @@ describe('buildWheelContinuation', () => {
         refuerzo('2025-12-31', 'D'),
         guardia('2025-12-31', 'E'),
       ]);
-      const result = buildWheelContinuation('AP', previous, previousDays, order);
+      const result = build('AP', previous, previousDays, order);
       expect(result.refuerzo).toEqual({ weekday: 1, saturday: 2, holiday: 4 });
       expect(result.singleGuardia).toBe(0);
     });
 
     it('AC: refuerzo queda vacío aunque haya filas de refuerzo', () => {
       const previous = previousRota(order, [refuerzo('2025-12-29', 'A'), guardia('2025-12-30', 'B')]);
-      expect(buildWheelContinuation('AC', previous, previousDays, order).refuerzo).toEqual({});
+      expect(build('AC', previous, previousDays, order).refuerzo).toEqual({});
     });
   });
 
@@ -144,7 +155,7 @@ describe('buildWheelContinuation', () => {
       guardia('2025-12-31', 'B'),
       refuerzo('2025-12-31', 'D'),
     ]);
-    const result = buildWheelContinuation('AP', previous, previousDays, order);
+    const result = build('AP', previous, previousDays, order);
     expect([...result.restingOnFirstDay].sort()).toEqual(['B', 'D']);
   });
 });

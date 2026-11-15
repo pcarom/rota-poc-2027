@@ -1,4 +1,4 @@
-import { AC_POOL_4, AP_POOL_17, HOLIDAYS_2026, YEAR_2026, seededRandom, toHolidaySet } from '../helpers/fixtures';
+import { AC_POOL_4, AP_POOL_17, HOLIDAYS_2026, YEAR_2026, toHolidaySet } from '../helpers/fixtures';
 
 import { generateRotas } from '../../src/scheduling/assignment.service';
 import { classifyYear } from '../../src/holidays/holidays.service';
@@ -153,7 +153,7 @@ describe('Estrategia de rueda única (single-wheel)', () => {
   describe('integrado en generateRotas (2026)', () => {
     const dayClassifications = classifyYear(YEAR_2026, toHolidaySet(HOLIDAYS_2026));
 
-    it('la guardia AC recorre el grupo barajado en una sola rueda todo el año', () => {
+    it('la guardia AC recorre el grupo en el orden recibido, en una sola rueda todo el año', () => {
       const { ac } = generateRotas(
         YEAR_2026,
         AC_POOL_4,
@@ -161,13 +161,12 @@ describe('Estrategia de rueda única (single-wheel)', () => {
         dayClassifications,
         undefined,
         'single-wheel',
-        seededRandom(5),
       );
 
       const guardias = ac.schedule.map(
         (day) => day.doctors.find((doctor) => doctor.role === 'guardia')!.doctorId,
       );
-      const order = ac.poolOrder.map((doctor) => doctor.id);
+      const order = AC_POOL_4.map((doctor) => doctor.id);
       expect(guardias).toEqual(guardias.map((_, i) => order[i % order.length]));
       expect(ac.strategy).toBe('single-wheel');
     });

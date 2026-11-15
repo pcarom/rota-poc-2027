@@ -563,7 +563,7 @@ export class App implements OnInit {
     this.apStats.set([]);
     this.hasAcRota.set(false);
     this.hasApRota.set(false);
-    // Sin cuadrante no hay orden barajado que mostrar: se vuelve al original.
+    // Sin cuadrante no hay orden de generación que mostrar: se vuelve al original.
     this.doctorPoolService.resetOrder();
   }
 

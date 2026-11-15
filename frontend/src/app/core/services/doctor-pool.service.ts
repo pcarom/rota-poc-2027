@@ -19,7 +19,7 @@ export class DoctorPoolService {
   /** Equipo cuyos médicos están cargados */
   private teamId: number | null = null;
 
-  /** Último orden barajado de cada grupo; se reaplica si los médicos llegan después. */
+  /** Último orden de generación de cada grupo; se reaplica si los médicos llegan después. */
   private readonly savedOrder: Partial<Record<RotaType, string[]>> = {};
 
   /** Ids en el orden original (el de la lista del equipo), al que vuelve `resetOrder`. */
@@ -79,7 +79,7 @@ export class DoctorPoolService {
     );
   }
 
-  /** Olvida el orden barajado y devuelve cada grupo a su orden original. */
+  /** Olvida el orden de generación y devuelve cada grupo a su orden original. */
   resetOrder(): void {
     this.forgetSavedOrder();
     for (const rotaType of ['AC', 'AP'] as RotaType[]) {
@@ -88,7 +88,7 @@ export class DoctorPoolService {
   }
 
   /**
-   * Reordena los médicos del grupo según `orderedIds` (el orden barajado con que se generó
+   * Reordena los médicos del grupo según `orderedIds` (el orden con que se generó
    * el cuadrante). Los que no aparecen en la lista conservan su orden y van al final.
    */
   applyOrder(rotaType: RotaType, orderedIds: string[]): void {

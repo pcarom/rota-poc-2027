@@ -67,8 +67,6 @@ export interface RotaSchedule {
   rotaType: RotaType;
   strategy: AssignmentStrategyId;
   doctorsPerDay: number;
-  /** Grupo en el orden (barajado) con que se generó el cuadrante */
-  poolOrder: DoctorInput[];
   schedule: DayAssignment[];
   stats: StatsResponse;
   warnings: string[];

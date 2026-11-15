@@ -514,7 +514,7 @@ describe('HTTP contract', () => {
   });
 
   describe('continuidad con el año anterior', () => {
-    it('el año siguiente conserva el orden del grupo y sigue las ruedas desde el 31 de diciembre', async () => {
+    it('el año siguiente recibe el mismo grupo en el mismo orden y sigue las ruedas desde el 31 de diciembre', async () => {
       const [firstAc, firstAp] = (await generate({ year: YEAR_2026 - 1 })).json();
       const [ac, ap] = (await generate()).json();
 
@@ -537,13 +537,12 @@ describe('HTTP contract', () => {
       }
     });
 
-    it('si cambia el grupo, los que siguen conservan su orden y los nuevos van al final', async () => {
-      const [firstAc] = (await generate({ year: YEAR_2026 - 1 })).json();
+    it('si cambia el grupo, se asigna en el orden recibido aunque los que siguen vengan de otro orden', async () => {
+      await generate({ year: YEAR_2026 - 1 });
       const newcomer = { id: 'doc-099', name: 'Dr. Nuevo', department: 'Medicina General' };
       const [ac] = (await generate({ ac_pool: [newcomer, ...AC_POOL_4.slice(1)] })).json();
 
-      const expected = (firstAc.doctor_order as string[]).filter((doctorId) => doctorId !== AC_POOL_4[0].id);
-      expect(ac.doctor_order).toEqual([...expected, 'doc-099']);
+      expect(ac.doctor_order).toEqual(['doc-099', ...AC_POOL_4.slice(1).map((doctor) => doctor.id)]);
     });
   });
 
