@@ -1,10 +1,5 @@
-import { IsArray, IsIn, IsInt, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsInt, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
-
-import {
-  ASSIGNMENT_STRATEGY_IDS,
-  AssignmentStrategyId,
-} from '../../scheduling/strategies/assignment-strategy';
 
 export class DoctorInputDto {
   @IsString({ message: 'el identificador del médico debe ser una cadena de texto' })
@@ -36,9 +31,4 @@ export class GenerateRotaDto {
   @IsOptional()
   @IsInt({ message: 'el equipo debe ser un número entero' })
   team_id?: number;
-
-  // Método de asignación; si se omite, el servicio usa 'single-wheel'.
-  @IsOptional()
-  @IsIn(ASSIGNMENT_STRATEGY_IDS, { message: 'el método de asignación debe ser single-wheel o wheels' })
-  strategy?: AssignmentStrategyId;
 }

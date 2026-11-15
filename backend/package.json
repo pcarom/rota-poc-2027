@@ -19,7 +19,6 @@
     "start": "node dist/src/main.js",
     "start:dev": "ts-node --transpile-only src/main.ts",
     "test": "jest --runInBand",
-    "compare:strategies": "ts-node --transpile-only scripts/compare-strategies.ts",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage"
   },

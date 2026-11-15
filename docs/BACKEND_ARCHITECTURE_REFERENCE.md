@@ -22,7 +22,7 @@ Este documento resume el backend NestJS actual ahora que la implementación en P
 - `src/config/` expone la configuración de la aplicación como `CITY`.
 - `src/database/` gestiona la configuración de TypeORM y las migraciones.
 - `src/holidays/` obtiene los festivos españoles, los filtra por ciudad/región y los almacena en caché.
-- `src/scheduling/` contiene el algoritmo de rota y el cálculo de estadísticas. `src/scheduling/strategies/` agrupa los métodos de asignación intercambiables (patrón Strategy): `wheels`, `single-wheel` y el registro `ASSIGNMENT_STRATEGIES` (`balanced` está retirada).
+- `src/scheduling/` contiene el algoritmo de rota y el cálculo de estadísticas. `src/scheduling/single-wheel.ts` implementa el único método de asignación, la rueda única (`assignSingleWheel`; `wheels` y `balanced` están retiradas y ya no hay selector de método).
 - `src/rota/` gestiona la generación, recuperación, sustitución, exportación a Excel, entidades y mapeo de respuestas.
 - `src/teams/` gestiona los equipos (entidad `TeamEntity`, CRUD y lista de médicos). `TeamsService.resolveTeamId` traduce el `team_id` opcional de las rutas `/rota` (por defecto, el equipo principal) y `team-id.pipe.ts` valida el parámetro con mensajes en español.
 - `src/health/` proporciona el endpoint de liveness `/health`.
@@ -35,7 +35,7 @@ Este documento resume el backend NestJS actual ahora que la implementación en P
 - `POST /api/v1/holidays/:year` — marca una fecha como festivo manual
 - `DELETE /api/v1/holidays/:year/:date` — desmarca un festivo manual (solo si `source = 'manual'` y no es especial)
 - `GET /api/v1/teams` · `POST /api/v1/teams` · `PATCH /api/v1/teams/:teamId` · `PUT /api/v1/teams/:teamId/doctors` · `DELETE /api/v1/teams/:teamId`
-- `POST /api/v1/rota/generate` — genera AC y AP a la vez (`{ year, ac_pool, ap_pool, strategy?, team_id? }` → `[AC, AP]`). Todas las rutas `/rota` admiten `?team_id=` (por defecto, el equipo principal)
+- `POST /api/v1/rota/generate` — genera AC y AP a la vez (`{ year, ac_pool, ap_pool, team_id? }` → `[AC, AP]`; un `strategy` enviado se ignora). Todas las rutas `/rota` admiten `?team_id=` (por defecto, el equipo principal)
 - `GET /api/v1/rota/:year/:rotaType`
 - `GET /api/v1/rota/:year`
 - `GET /api/v1/rota/:year/export`

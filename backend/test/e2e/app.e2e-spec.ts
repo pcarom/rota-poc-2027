@@ -1,4 +1,5 @@
 import { NestFastifyApplication } from '@nestjs/platform-fastify';
+import { DataSource } from 'typeorm';
 
 import {
   AC_POOL_4,
@@ -547,21 +548,9 @@ describe('HTTP contract', () => {
     });
   });
 
-  describe('método de asignación (strategy)', () => {
-    it('genera con wheels y lo devuelve en la respuesta y en las lecturas posteriores', async () => {
-      const generation = await generate({ strategy: 'wheels' });
-      expect(generation.statusCode).toBe(201);
-      expect(generation.json().map((rota: { strategy: string }) => rota.strategy)).toEqual(['wheels', 'wheels']);
-
-      const byType = await app.inject({ method: 'GET', url: `/api/v1/rota/${YEAR_2026}/AP` });
-      expect(byType.json().strategy).toBe('wheels');
-
-      const byYear = await app.inject({ method: 'GET', url: `/api/v1/rota/${YEAR_2026}` });
-      expect(byYear.json()[0].strategy).toBe('wheels');
-    });
-
+  describe('método de asignación', () => {
     it('genera con single-wheel y lo devuelve en la respuesta y en las lecturas posteriores', async () => {
-      const generation = await generate({ strategy: 'single-wheel' });
+      const generation = await generate();
       expect(generation.statusCode).toBe(201);
       expect(generation.json().map((rota: { strategy: string }) => rota.strategy)).toEqual([
         'single-wheel',
@@ -570,31 +559,43 @@ describe('HTTP contract', () => {
 
       const byType = await app.inject({ method: 'GET', url: `/api/v1/rota/${YEAR_2026}/AC` });
       expect(byType.json().strategy).toBe('single-wheel');
+
+      const byYear = await app.inject({ method: 'GET', url: `/api/v1/rota/${YEAR_2026}` });
+      expect(byYear.json().map((rota: { strategy: string }) => rota.strategy)).toEqual([
+        'single-wheel',
+        'single-wheel',
+      ]);
     });
 
-    it('usa single-wheel por defecto', async () => {
-      const generation = await generate();
-      expect(generation.statusCode).toBe(201);
-      expect(generation.json()[0].strategy).toBe('single-wheel');
-
-      const byType = await app.inject({ method: 'GET', url: `/api/v1/rota/${YEAR_2026}/AC` });
-      expect(byType.json().strategy).toBe('single-wheel');
-    });
-
-    it('trata strategy null como omitido y usa single-wheel', async () => {
-      const generation = await generate({ strategy: null });
-      expect(generation.statusCode).toBe(201);
-      expect(generation.json()[1].strategy).toBe('single-wheel');
-    });
-
-    it.each(['aleatoria', 'balanced'])(
-      'rechaza la estrategia %s con el mensaje en español',
+    it.each(['wheels', 'balanced', 'x', null])(
+      'ignora un strategy enviado (%s) y genera con single-wheel',
       async (strategy) => {
-        const response = await generate({ strategy });
-        expect(response.statusCode).toBe(400);
-        expect(response.json().message).toContain(
-          'el método de asignación debe ser single-wheel o wheels',
-        );
+        const generation = await generate({ strategy });
+        expect(generation.statusCode).toBe(201);
+        expect(generation.json().map((rota: { strategy: string }) => rota.strategy)).toEqual([
+          'single-wheel',
+          'single-wheel',
+        ]);
+
+        const byType = await app.inject({ method: 'GET', url: `/api/v1/rota/${YEAR_2026}/AP` });
+        expect(byType.json().strategy).toBe('single-wheel');
+      },
+    );
+
+    it.each(['wheels', 'balanced'])(
+      'un cuadrante antiguo guardado con %s se sigue leyendo con ese método',
+      async (retired) => {
+        await generate();
+        await app
+          .get(DataSource)
+          .query(`UPDATE rotas SET strategy = '${retired}' WHERE rota_type = 'AC'`);
+
+        const byType = await app.inject({ method: 'GET', url: `/api/v1/rota/${YEAR_2026}/AC` });
+        expect(byType.statusCode).toBe(200);
+        expect(byType.json().strategy).toBe(retired);
+
+        const byYear = await app.inject({ method: 'GET', url: `/api/v1/rota/${YEAR_2026}` });
+        expect(byYear.json().map((rota: { strategy: string }) => rota.strategy)).toEqual([retired, 'single-wheel']);
       },
     );
   });

@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { AddDoctorRequest, GenerateRequest, AssignmentStrategy, DEFAULT_STRATEGY, ReplaceRequest, RotaResponse } from '../models/rota.model';
+import { AddDoctorRequest, GenerateRequest, ReplaceRequest, RotaResponse } from '../models/rota.model';
 import { Doctor, RotaType } from '../models/doctor.model';
 
 /** Todas las operaciones van sobre los cuadrantes de un equipo. */
@@ -23,7 +23,6 @@ export class RotaService {
 
   /** Genera de una vez los cuadrantes AC y AP del año; devuelve [AC, AP]. */
   generateRotas(teamId: number, year: number, acPool: Doctor[], apPool: Doctor[],
-    strategy: AssignmentStrategy = DEFAULT_STRATEGY,
   ): Observable<RotaResponse[]> {
     const toInput = (doctor: Doctor) => ({
       id: doctor.id,
@@ -34,7 +33,6 @@ export class RotaService {
       year,
       ac_pool: acPool.map(toInput),
       ap_pool: apPool.map(toInput),
-      strategy,
       team_id: teamId,
     };
     return this.http.post<RotaResponse[]>('/api/v1/rota/generate', request);

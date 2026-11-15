@@ -1,6 +1,6 @@
 import { toIsoDate } from '../common/date.utils';
 import { DayInfo, DoctorInput, RotaType, ShiftRole } from './scheduling.types';
-import { WheelId, wheelForDay } from './strategies/wheels.strategy';
+import { WheelId, wheelForDay } from './single-wheel';
 
 /** Turno persistido de un cuadrante anterior, en el orden de `rota_assignments` (fecha, id). */
 export interface PreviousAssignment {
@@ -24,10 +24,8 @@ export interface PreviousYear {
 
 /** Punto de partida de las ruedas que continúa el año anterior. */
 export interface WheelContinuation {
-  /** Arranque de cada rueda de guardias (estrategia `wheels`). */
-  guardia: Partial<Record<WheelId, number>>;
-  /** Arranque de la rueda única de guardias (`single-wheel`). */
-  singleGuardia?: number;
+  /** Arranque de la rueda única de guardias. */
+  guardia?: number;
   /** Arranque de cada rueda de refuerzos (sólo AP; vacío en AC). */
   refuerzo: Partial<Record<WheelId, number>>;
   /** Médicos que trabajaron el día anterior al primer día: no salen ese día. */
@@ -94,8 +92,7 @@ export function buildWheelContinuation(
   const wheelByDate = new Map(previousDays.map((day) => [toIsoDate(day.date), wheelForDay(day)]));
   const lastDate = previousDays.length > 0 ? toIsoDate(previousDays[previousDays.length - 1].date) : '';
 
-  let lastSingleGuardia: string | undefined;
-  const lastGuardiaByWheel = new Map<WheelId, string>();
+  let lastGuardia: string | undefined;
   const lastRefuerzoByWheel = new Map<WheelId, string>();
   const restingOnFirstDay = new Set<string>();
 
@@ -108,29 +105,24 @@ export function buildWheelContinuation(
       continue;
     }
     if (assignment.role === 'guardia') {
-      lastSingleGuardia = assignment.doctorId;
-      lastGuardiaByWheel.set(wheel, assignment.doctorId);
+      lastGuardia = assignment.doctorId;
     } else if (rotaType === 'AP') {
       lastRefuerzoByWheel.set(wheel, assignment.doctorId);
     }
   }
 
   const next = (doctorId: string) => nextPointer(doctorId, previous.poolOrder, orderedPool);
-  const pointersOf = (lastByWheel: Map<WheelId, string>): Partial<Record<WheelId, number>> => {
-    const pointers: Partial<Record<WheelId, number>> = {};
-    for (const [wheel, doctorId] of lastByWheel) {
-      const pointer = next(doctorId);
-      if (pointer !== undefined) {
-        pointers[wheel] = pointer;
-      }
+  const refuerzo: Partial<Record<WheelId, number>> = {};
+  for (const [wheel, doctorId] of lastRefuerzoByWheel) {
+    const pointer = next(doctorId);
+    if (pointer !== undefined) {
+      refuerzo[wheel] = pointer;
     }
-    return pointers;
-  };
+  }
 
   return {
-    guardia: pointersOf(lastGuardiaByWheel),
-    singleGuardia: lastSingleGuardia === undefined ? undefined : next(lastSingleGuardia),
-    refuerzo: pointersOf(lastRefuerzoByWheel),
+    guardia: lastGuardia === undefined ? undefined : next(lastGuardia),
+    refuerzo,
     restingOnFirstDay: [...restingOnFirstDay],
   };
 }

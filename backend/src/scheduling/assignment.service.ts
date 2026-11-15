@@ -10,11 +10,7 @@ import { InfeasiblePoolError } from './errors';
 import { SATURDAY_WEEKDAY, refuerzoShiftDetails, usesShifts2027 } from './shifts';
 import { RandomSource, shuffle } from './shuffle';
 import { calculateStats } from './stats.service';
-import {
-  AssignmentStrategyId,
-  DEFAULT_ASSIGNMENT_STRATEGY,
-  getAssignmentStrategy,
-} from './strategies';
+import { assignSingleWheel } from './single-wheel';
 import {
   DayAssignment,
   DayInfo,
@@ -92,7 +88,6 @@ interface AssignedRota {
   pool: DoctorInput[];
   /** Grupo en el orden (barajado o continuado) con que se asignó */
   poolOrder: DoctorInput[];
-  strategy: AssignmentStrategyId;
   schedule: DayAssignment[];
   /** Médicos que trabajaron el 31 de diciembre anterior (continuidad); vacío sin ella */
   restingOnFirstDay: string[];
@@ -110,7 +105,6 @@ function assignRota(
   pool: DoctorInput[],
   dayClassifications: DayInfo[],
   dayBeforeYear: DayInfo | undefined,
-  strategyId: AssignmentStrategyId,
   reservedRefuerzosByDay: number[] = [],
   random?: RandomSource,
   previous?: PreviousYearRota,
@@ -139,7 +133,7 @@ function assignRota(
     );
   }
 
-  // La estrategia recibe el grupo en el orden del año anterior si lo continúa; si no,
+  // La asignación recibe el grupo en el orden del año anterior si lo continúa; si no,
   // barajado para que el primer médico de la rotación no sea siempre el mismo. `pool`
   // conserva el orden original (estadísticas, persistencia).
   const continuedPool = previous ? continuePoolOrder(previous.poolOrder, pool) : null;
@@ -148,7 +142,7 @@ function assignRota(
     previous && continuedPool
       ? buildWheelContinuation(rotaType, previous, previousDays, continuedPool)
       : undefined;
-  const assigned = getAssignmentStrategy(strategyId).assign({
+  const assigned = assignSingleWheel({
     pool: orderedPool,
     days: dayClassifications,
     requiredByDay,
@@ -182,7 +176,6 @@ function assignRota(
     rotaType,
     pool,
     poolOrder: orderedPool,
-    strategy: strategyId,
     schedule,
     restingOnFirstDay: continuation?.restingOnFirstDay ?? [],
   };
@@ -347,7 +340,6 @@ function finalizeRota(rota: AssignedRota, extraWarnings: string[] = []): RotaSch
   return {
     year,
     rotaType,
-    strategy: rota.strategy,
     doctorsPerDay: 1,
     poolOrder: rota.poolOrder,
     schedule: [...schedule].sort((left, right) =>
@@ -369,7 +361,6 @@ export function generateRota(
   pool: DoctorInput[],
   dayClassifications: DayInfo[],
   dayBeforeYear?: DayInfo,
-  strategyId: AssignmentStrategyId | null = DEFAULT_ASSIGNMENT_STRATEGY,
   random?: RandomSource,
 ): RotaSchedule {
   return finalizeRota(
@@ -379,7 +370,6 @@ export function generateRota(
       pool,
       dayClassifications,
       dayBeforeYear,
-      strategyId ?? DEFAULT_ASSIGNMENT_STRATEGY,
       [],
       random,
     ),
@@ -402,18 +392,15 @@ export function generateRotas(
   apPool: DoctorInput[],
   dayClassifications: DayInfo[],
   dayBeforeYear?: DayInfo,
-  strategyId: AssignmentStrategyId | null = DEFAULT_ASSIGNMENT_STRATEGY,
   random?: RandomSource,
   previousYear?: PreviousYear,
 ): { ac: RotaSchedule; ap: RotaSchedule } {
-  const strategy = strategyId ?? DEFAULT_ASSIGNMENT_STRATEGY;
   const acRota = assignRota(
     year,
     'AC',
     acPool,
     dayClassifications,
     dayBeforeYear,
-    strategy,
     [],
     random,
     previousYear?.ac,
@@ -426,7 +413,6 @@ export function generateRotas(
     apPool,
     dayClassifications,
     dayBeforeYear,
-    strategy,
     reservedByDay,
     random,
     previousYear?.ap,
