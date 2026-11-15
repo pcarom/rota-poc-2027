@@ -1,13 +1,13 @@
 # Comparación de métodos de asignación: Equilibrado vs Ruedas
 
-> **Nota (noviembre de 2026):** la estrategia `balanced` («Equilibrado») está retirada. Este informe se conserva como registro histórico de la decisión. `scripts/compare-strategies.ts` compara ahora `wheels` con `single-wheel`; las cifras de abajo son de la ejecución original.
+> **Nota (noviembre de 2026):** las estrategias `balanced` («Equilibrado») y `wheels` («Ruedas») están retiradas; sólo queda la rueda única (`single-wheel`). Este informe se conserva como registro histórico de la decisión. El script `scripts/compare-strategies.ts` y el comando `npm run compare:strategies` se han eliminado, así que ya no se puede reproducir; las cifras de abajo son de las ejecuciones originales.
 
 Informe de disparidades entre la estrategia actual (`balanced`, «Equilibrado») y la estrategia de ruedas (`wheels`, «Ruedas»). Las Ruedas replican el método manual del hospital: varias ruedas round-robin estrictas para laborables, sábados, domingos y festivos.
 
 La estrategia `wheels` de producción arranca las ruedas **escalonadas**. La rueda de laborables empieza en el médico 0, la de sábados en ⌊N/4⌋, la de domingos en ⌊2N/4⌋ y la de festivos en ⌊3N/4⌋. Se adoptó tras este mismo análisis: el hallazgo 4 lo compara con la variante «todas desde el primero».
 
 - **Datos**: `docs/strategy-comparison/results.json`
-- **Reproducir**: `cd backend && npm run compare:strategies`
+- **Reproducir**: ya no es posible (script eliminado, ver la nota del principio)
 - **Escenarios**: 16 combinaciones (años 2026 y 2027 × AC con 3, 4, 5 y 6 médicos × AP con 5, 8, 12 y 17 médicos). AC 4 y AP 17 son los grupos semilla de `frontend/src/assets/doctors.json`; los grupos menores son los primeros N médicos del semilla y los mayores se completan con médicos sintéticos.
 - **Festivos**: lista fija de festivos nacionales y de la Comunidad Valenciana (14 por año). El entorno de análisis no tenía acceso a `date.nager.at`, así que no hay festivos locales de Alicante ni traslados de festivos en domingo. Con los festivos reales las cifras cambiarán ligeramente, pero las tendencias no.
 

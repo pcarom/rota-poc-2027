@@ -810,70 +810,46 @@ describe('App', () => {
 
 
   describe('método de asignación', () => {
-    function selectStrategy(fixture: { nativeElement: HTMLElement; detectChanges(): void }, value: string) {
-      const select = fixture.nativeElement.querySelector('.strategy-select') as HTMLSelectElement;
-      select.value = value;
-      select.dispatchEvent(new Event('change'));
-      fixture.detectChanges();
-    }
-
     function generate(fixture: { nativeElement: HTMLElement; detectChanges(): void }) {
       (fixture.nativeElement.querySelector('.btn-generate') as HTMLButtonElement).click();
       fixture.detectChanges();
     }
 
-    it('debe enviar single-wheel por defecto', () => {
+    it('no debe mostrar el selector de método y la petición de generar no lleva strategy', () => {
       const fixture = TestBed.createComponent(App);
       fixture.detectChanges();
       flushInitRequests({ rotaStatus: 404 });
       fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.pool-actions select')).toBeNull();
 
       generate(fixture);
 
       const req = httpTesting.expectOne('/api/v1/rota/generate');
-      expect(req.request.body.strategy).toBe('single-wheel');
+      expect('strategy' in req.request.body).toBe(false);
       req.flush(generatedRotas);
     });
 
-    it('debe enviar wheels tras elegirlo en el selector', () => {
+    it('no debe mostrar nota de método tras generar con single-wheel', () => {
       const fixture = TestBed.createComponent(App);
       fixture.detectChanges();
       flushInitRequests({ rotaStatus: 404 });
       fixture.detectChanges();
 
-      selectStrategy(fixture, 'wheels');
-      generate(fixture);
-
-      const req = httpTesting.expectOne('/api/v1/rota/generate');
-      expect(req.request.body.strategy).toBe('wheels');
-      req.flush(generatedRotas.map((rota) => ({ ...rota, strategy: 'wheels' })));
-    });
-
-    it('debe mostrar el método con el que se generó el cuadrante', () => {
-      const fixture = TestBed.createComponent(App);
-      fixture.detectChanges();
-      flushInitRequests({ rotaStatus: 404 });
-      fixture.detectChanges();
-      expect(fixture.nativeElement.querySelector('.generated-with')).toBeNull();
-
-      selectStrategy(fixture, 'single-wheel');
       generate(fixture);
       httpTesting.expectOne('/api/v1/rota/generate').flush(generatedRotas.map((rota) => ({ ...rota, strategy: 'single-wheel' })));
       fixture.detectChanges();
 
-      expect(fixture.nativeElement.querySelector('.generated-with').textContent.trim()).toBe(
-        'Generado con: Rueda única',
-      );
+      expect(fixture.nativeElement.querySelector('.generated-with')).toBeNull();
     });
 
-    it('debe mostrar el método de un cuadrante cargado al iniciar', () => {
+    it('debe mostrar Ruedas (retirado) en un cuadrante cargado al iniciar generado con wheels', () => {
       const fixture = TestBed.createComponent(App);
       fixture.detectChanges();
       flushInitRequests({ rotas: [{ ...mockAcRotaResponse, strategy: 'wheels' }] });
       fixture.detectChanges();
 
       expect(fixture.nativeElement.querySelector('.generated-with').textContent.trim()).toBe(
-        'Generado con: Ruedas',
+        'Generado con: Ruedas (retirado)',
       );
     });
 
@@ -888,6 +864,7 @@ describe('App', () => {
       );
     });
   });
+
   describe('equipos', () => {
     const currentYear = new Date().getFullYear();
 

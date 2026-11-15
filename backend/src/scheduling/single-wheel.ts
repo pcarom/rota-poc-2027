@@ -1,7 +1,13 @@
-import { addDays, toIsoDate } from "../../common/date.utils";
-import { InfeasiblePoolError } from "../errors";
-import { DayInfo, DoctorInput } from "../scheduling.types";
-import { AssignmentStrategy, StrategyInput, splitSlots } from "./assignment-strategy";
+import { addDays, toIsoDate } from "../common/date.utils";
+import type { WheelContinuation } from "./continuation";
+import { InfeasiblePoolError } from "./errors";
+import { DayInfo, DoctorInput } from "./scheduling.types";
+
+const WORKDAYS_PER_WEEK = 5;
+const DAYS_PER_WEEK = 7;
+
+/** Método con el que se generan todos los cuadrantes; se persiste en `rotas.strategy`. */
+export const ASSIGNMENT_METHOD = "single-wheel" as const;
 
 export type WheelId = "weekday" | "saturday" | "sunday" | "holiday";
 
@@ -20,47 +26,34 @@ export function wheelForDay(day: DayInfo): WheelId {
   return weekday === 6 ? "saturday" : "weekday";
 }
 
+export interface AssignmentInput {
+  pool: DoctorInput[];
+  // Días del año en orden cronológico, ya con las duraciones efectivas (AP incluido).
+  days: DayInfo[];
+  // Médicos requeridos por día (mismo índice que `days`), guardias y refuerzos juntos.
+  requiredByDay: number[];
+  // Cuántos de los requeridos de cada día son refuerzos (los últimos). Sin él, todos son guardias.
+  refuerzosByDay?: number[];
+  // Continuación del año anterior; sin ella las ruedas arrancan como siempre.
+  continuation?: WheelContinuation;
+}
+
+/** Plazas de guardia y de refuerzo de un día. */
+function splitSlots(
+  input: AssignmentInput,
+  dayIndex: number,
+): { guardia: number; refuerzo: number } {
+  const required = input.requiredByDay[dayIndex];
+  const refuerzo = Math.min(input.refuerzosByDay?.[dayIndex] ?? 0, required);
+  return { guardia: required - refuerzo, refuerzo };
+}
+
 interface Wheel {
   pointer: number;
   // Turnos debidos, en orden FIFO: cada salto añade una entrada, de modo que un mismo
   // médico puede aparecer varias veces (una por turno que se le ha saltado).
   pending: string[];
 }
-
-/**
- * Estrategia de ruedas: replica el cuadrante hecho a mano.
- *
- * Hay cuatro ruedas independientes (laborables, sábados, domingos, festivos). Cada
- * una recorre el grupo en el orden de la lista recibida con su propio puntero. Los
- * punteros arrancan escalonados (`staggeredInitialPointers`) salvo que haya cuadrante
- * del año anterior: entonces cada rueda continúa tras el último médico que hizo un
- * turno de ella (`input.continuation`) y quien trabajó el 31 de diciembre descansa el
- * 1 de enero. Cada asignación avanza el puntero de su rueda; si un día requiere varios
- * médicos se toman los siguientes de la rueda.
- *
- * Choque con el día de descanso: "saltar y conservar turno". Un médico no está
- * descansado si hizo guardia el día anterior (en cualquier rueda) o ya ha sido
- * elegido ese mismo día. Si le toca en su rueda y no está descansado, se salta, el
- * puntero avanza sobre él y se anota una deuda en la cola de pendientes de esa rueda.
- * Cada salto genera una deuda, aunque el médico ya tuviera otras: la cola admite
- * repeticiones. Al llenar un día se consideran primero los pendientes (FIFO) y
- * después la rueda desde su puntero; elegir a alguien de la cola consume UNA deuda.
- * Un médico nunca sale dos veces el mismo día, aunque acumule varias deudas.
- *
- * Descanso blando: si en todo el grupo no hay suficientes descansados para cubrir el
- * día, se completa con no descansados siguiendo el orden de la rueda (pendientes
- * primero). Esos huecos no generan deuda nueva: no se ha saltado a nadie, se ha
- * incumplido el descanso porque no había alternativa. Esta rama es inalcanzable
- * desde `generateRota` (su tamaño mínimo de grupo, 2 × pico de cobertura, garantiza
- * siempre suficientes descansados) y sólo existe por robustez ante llamadas directas.
- */
-export const wheelsStrategy: AssignmentStrategy = {
-  id: "wheels",
-
-  assign(input: StrategyInput): DoctorInput[][] {
-    return assignWithWheels(input, staggeredInitialPointers(input.pool.length));
-  },
-};
 
 /**
  * Punteros iniciales escalonados: laborables 0, sábados ⌊N/4⌋, domingos ⌊2N/4⌋ y
@@ -81,43 +74,55 @@ export function staggeredInitialPointers(poolSize: number): Record<WheelId, numb
 }
 
 /**
- * Implementación de la estrategia con punteros iniciales parametrizables. Se exporta
- * para análisis y pruebas (p. ej. la variante «todas desde el primero» en
- * `scripts/compare-strategies.ts`); sin punteros explícitos todas las ruedas arrancan en
- * el índice 0. El producto pasa `staggeredInitialPointers`.
+ * Asignación por rueda única: las guardias recorren el grupo en una sola rueda, en el
+ * orden de la lista, todos los días del año sin distinguir laborable, sábado, domingo,
+ * festivo ni festivo especial. Arranca en `continuation.guardia` o, sin cuadrante del año
+ * anterior, en el primer médico.
  *
- * Guardias y refuerzos tienen cada uno su juego de cuatro ruedas. Las de refuerzo
- * arrancan desplazadas ⌊N/2⌋ respecto a las de guardia, para que la guardia y el
- * refuerzo de un mismo día no recaigan en médicos contiguos de la lista. Cada día se
- * cubren primero las guardias y después los refuerzos; un médico elegido para la
- * guardia no está disponible para el refuerzo de ese día.
+ * Los refuerzos tienen cuatro ruedas por tipo de día (laborables, sábados, domingos,
+ * festivos) con punteros escalonados (`staggeredInitialPointers`) y desplazados ⌊N/2⌋
+ * respecto al arranque de las guardias, para que la guardia y el refuerzo de un mismo día
+ * no recaigan en médicos contiguos de la lista. Con cuadrante del año anterior, cada
+ * rueda de refuerzos continúa tras el último médico que hizo un turno de ella y quien
+ * trabajó el 31 de diciembre descansa el 1 de enero (`input.continuation`). Cada día se
+ * cubren primero las guardias y después los refuerzos; un médico elegido para la guardia
+ * no está disponible para el refuerzo de ese día. Si un día requiere varios médicos de
+ * una rueda, se toman los siguientes.
  *
- * `breakWeeklyResonance` (activada por defecto) aplica la corrección de la
- * resonancia semanal; ver `startsFullWorkWeek`.
+ * Choque con el día de descanso: «saltar y conservar turno». Un médico no está
+ * descansado si hizo guardia el día anterior (en cualquier rueda) o ya ha sido
+ * elegido ese mismo día. Si le toca en su rueda y no está descansado, se salta, el
+ * puntero avanza sobre él y se anota una deuda en la cola de pendientes de esa rueda.
+ * Cada salto genera una deuda, aunque el médico ya tuviera otras: la cola admite
+ * repeticiones. Al llenar un día se consideran primero los pendientes (FIFO) y
+ * después la rueda desde su puntero; elegir a alguien de la cola consume UNA deuda.
+ * Un médico nunca sale dos veces el mismo día, aunque acumule varias deudas.
  *
- * `singleGuardiaWheel` (desactivada por defecto) hace que las guardias recorran una
- * única rueda para todos los días, sea laborable, sábado, domingo, festivo o festivo
- * especial; arranca en el puntero de laborables. Los refuerzos siguen con sus cuatro
- * ruedas. La corrección de la resonancia semanal no se aplica a la rueda única: no es
- * una rueda de laborables.
+ * Descanso blando: si en todo el grupo no hay suficientes descansados para cubrir el
+ * día, se completa con no descansados siguiendo el orden de la rueda (pendientes
+ * primero). Esos huecos no generan deuda nueva: no se ha saltado a nadie, se ha
+ * incumplido el descanso porque no había alternativa. Esta rama es inalcanzable
+ * desde `generateRota` (su tamaño mínimo de grupo, 2 × pico de cobertura, garantiza
+ * siempre suficientes descansados) y sólo existe por robustez ante llamadas directas.
+ * Lanza `InfeasiblePoolError` si algún día no tiene suficientes médicos distintos.
+ *
+ * `breakWeeklyResonance` (activada por defecto) aplica la corrección de la resonancia
+ * semanal a la rueda de refuerzos de laborables; ver `startsFullWorkWeek`.
  *
  * `breakLapResonance` (activada por defecto) corrige la resonancia de la rueda única:
  * si el tamaño del grupo es múltiplo de 7, cada vuelta de la rueda dura un número exacto
  * de semanas y cada médico caería siempre el mismo día de la semana. Por eso, cada N
  * días (N = tamaño del grupo) la rueda de guardias avanza un puesto SIN apuntar deuda.
  * El saltado hace el último día de esa vuelta, así que nadie pierde guardias, y el día
- * de la semana de cada médico se desplaza uno en cada vuelta. No afecta a `wheels`.
+ * de la semana de cada médico se desplaza uno en cada vuelta.
  */
-export function assignWithWheels(
-  input: StrategyInput,
-  initialPointers: Partial<Record<WheelId, number>> = {},
+export function assignSingleWheel(
+  input: AssignmentInput,
   {
     breakWeeklyResonance = true,
-    singleGuardiaWheel = false,
     breakLapResonance = true,
   }: {
     breakWeeklyResonance?: boolean;
-    singleGuardiaWheel?: boolean;
     breakLapResonance?: boolean;
   } = {},
 ): DoctorInput[][] {
@@ -125,13 +130,11 @@ export function assignWithWheels(
   const size = pool.length;
   const doctorById = new Map(pool.map((doctor) => [doctor.id, doctor]));
   const { continuation } = input;
-  const buildWheels = (
-    offset: number,
-    continued: Partial<Record<WheelId, number>> = {},
-  ): Record<WheelId, Wheel> => {
-    // Un puntero continuado se usa tal cual; el desplazamiento sólo vale para el arranque por defecto.
+  const initialPointers = staggeredInitialPointers(size);
+  // Un puntero continuado se usa tal cual; el desplazamiento sólo vale para el arranque por defecto.
+  const buildRefuerzoWheels = (): Record<WheelId, Wheel> => {
     const start = (wheel: WheelId): number =>
-      (continued[wheel] ?? (initialPointers[wheel] ?? 0) + offset) % size;
+      (continuation?.refuerzo[wheel] ?? initialPointers[wheel] + Math.floor(size / 2)) % size;
     return {
       weekday: { pointer: start("weekday"), pending: [] },
       saturday: { pointer: start("saturday"), pending: [] },
@@ -139,21 +142,9 @@ export function assignWithWheels(
       holiday: { pointer: start("holiday"), pending: [] },
     };
   };
-  // Rueda única: los cuatro tipos de día comparten el mismo objeto (puntero y deuda).
-  const buildSingleWheel = (): Record<WheelId, Wheel> => {
-    const wheel: Wheel = {
-      pointer: (continuation?.singleGuardia ?? initialPointers.weekday ?? 0) % size,
-      pending: [],
-    };
-    return { weekday: wheel, saturday: wheel, sunday: wheel, holiday: wheel };
-  };
-  const wheelsByRole = {
-    guardia: singleGuardiaWheel ? buildSingleWheel() : buildWheels(0, continuation?.guardia),
-    refuerzo: buildWheels(Math.floor(size / 2), continuation?.refuerzo),
-  };
-  const rolesWithWeekdayWheel = singleGuardiaWheel
-    ? (["refuerzo"] as const)
-    : (["guardia", "refuerzo"] as const);
+  // Rueda única: todas las guardias, sea cual sea el tipo de día, comparten esta rueda (puntero y deuda).
+  const guardiaWheel: Wheel = { pointer: (continuation?.guardia ?? 0) % size, pending: [] };
+  const refuerzoWheels = buildRefuerzoWheels();
   const lastAssigned = new Map<string, string>();
   // Quien trabajó el 31 de diciembre anterior descansa el primer día del año.
   if (days.length > 0) {
@@ -166,35 +157,25 @@ export function assignWithWheels(
 
   for (const [dayIndex, day] of days.entries()) {
     // Corrección de la resonancia: con tantos médicos como laborables tiene la semana, la
-    // rueda de laborables da una vuelta exacta cada semana y cada médico cae siempre el
+    // rueda de refuerzos de laborables da una vuelta exacta cada semana y cada médico cae siempre el
     // mismo día (el del viernes no llega nunca al sábado). Como se hace a mano, el lunes
     // de cada semana de 5 laborables se salta un puesto SIN apuntar deuda: el saltado
     // hace el viernes, así que nadie pierde guardias y el día de cada uno va rotando.
     if (breakWeeklyResonance && size === WORKDAYS_PER_WEEK && startsFullWorkWeek(days, dayIndex)) {
-      for (const role of rolesWithWeekdayWheel) {
-        const wheel = wheelsByRole[role].weekday;
-        wheel.pointer = (wheel.pointer + 1) % size;
-      }
+      const wheel = refuerzoWheels.weekday;
+      wheel.pointer = (wheel.pointer + 1) % size;
     }
 
-    // Lo mismo para la rueda única con grupos múltiplos de 7: cada N días gira un puesto
-    // sin deuda, para que nadie quede fijo en el mismo día de la semana.
-    if (
-      breakLapResonance &&
-      singleGuardiaWheel &&
-      size % DAYS_PER_WEEK === 0 &&
-      dayIndex > 0 &&
-      dayIndex % size === 0
-    ) {
-      const wheel = wheelsByRole.guardia.weekday;
-      wheel.pointer = (wheel.pointer + 1) % size;
+    // Lo mismo para la rueda de guardias con grupos múltiplos de 7: cada N días gira un
+    // puesto sin deuda, para que nadie quede fijo en el mismo día de la semana.
+    if (breakLapResonance && size % DAYS_PER_WEEK === 0 && dayIndex > 0 && dayIndex % size === 0) {
+      guardiaWheel.pointer = (guardiaWheel.pointer + 1) % size;
     }
 
     const currentDate = toIsoDate(day.date);
     const previousDate = addDays(currentDate, -1);
     const slots = splitSlots(input, dayIndex);
     const required = slots.guardia + slots.refuerzo;
-    const wheelId = wheelForDay(day);
     const isRested = (doctorId: string): boolean =>
       lastAssigned.get(doctorId) !== previousDate;
 
@@ -268,9 +249,9 @@ export function assignWithWheels(
       wheel.pointer = (wheel.pointer + furthest + 1) % size;
     };
 
-    fill(wheelsByRole.guardia[wheelId], slots.guardia);
+    fill(guardiaWheel, slots.guardia);
     if (slots.refuerzo > 0) {
-      fill(wheelsByRole.refuerzo[wheelId], slots.refuerzo);
+      fill(refuerzoWheels[wheelForDay(day)], slots.refuerzo);
     }
 
     for (const doctorId of chosen) {
@@ -283,9 +264,6 @@ export function assignWithWheels(
 
   return result;
 }
-
-const WORKDAYS_PER_WEEK = 5;
-const DAYS_PER_WEEK = 7;
 
 /**
  * Cierto si `days[index]` es un lunes y los cinco días siguientes del calendario (lunes a

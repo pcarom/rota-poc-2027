@@ -32,7 +32,7 @@ npm run migration:run
 
 ```bash
 cd frontend
-npx ng test --watch=false       # ejecutar los 177 tests del frontend
+npx ng test --watch=false       # ejecutar los 171 tests del frontend
 npx ng build                    # build de producción
 npx ng serve --port 4200 --proxy-config src/proxy.conf.json  # servidor de desarrollo
 ```
@@ -46,10 +46,10 @@ docker compose up db            # solo MySQL (para desarrollo local del backend)
 
 ## Arquitectura
 
-- **API Backend** en `/api/v1`: config, equipos, CRUD de rota, festivos, health. **Equipos** (`/teams`): cada equipo tiene nombre, su lista de médicos y sus propios cuadrantes; las rutas `/rota` llevan `?team_id=` (o `team_id` en el cuerpo de `generate`) y, si se omite, usan el equipo principal (el más antiguo). El último equipo no se puede borrar. `POST /rota/generate` genera **AC y AP a la vez** (`{ year, ac_pool, ap_pool, strategy? }` → `[AC, AP]`) y `DELETE /rota/:year` los borra juntos (botón «Borrar cuadrantes» de la cabecera; conserva los festivos)
+- **API Backend** en `/api/v1`: config, equipos, CRUD de rota, festivos, health. **Equipos** (`/teams`): cada equipo tiene nombre, su lista de médicos y sus propios cuadrantes; las rutas `/rota` llevan `?team_id=` (o `team_id` en el cuerpo de `generate`) y, si se omite, usan el equipo principal (el más antiguo). El último equipo no se puede borrar. `POST /rota/generate` genera **AC y AP a la vez** (`{ year, ac_pool, ap_pool, team_id? }` → `[AC, AP]`; ya no hay parámetro `strategy`: si un cliente antiguo lo envía, se ignora) y `DELETE /rota/:year` los borra juntos (botón «Borrar cuadrantes» de la cabecera; conserva los festivos)
 - **Base de datos**: MySQL 8.4 con 5 tablas — teams, rotas, rota_doctors, rota_assignments, holidays
 - **Frontend**: Componentes standalone de Angular con estado basado en signals. El desplegable de equipo (`features/teams/team-selector.component.ts`) va encima de la lista de médicos; «Cargar lista» sustituye la lista del equipo por un fichero JSON o CSV (`core/parsers/doctor-file.parser.ts`)
-- **Algoritmo**: Dos estrategias de asignación seleccionables con `strategy` en `POST /rota/generate`, en `backend/src/scheduling/strategies/`: `wheels` (ruedas: laborables, sábados, domingos y festivos, con punteros iniciales escalonados 0/⌊N/4⌋/⌊2N/4⌋/⌊3N/4⌋, «saltar y conservar turno», deuda contada y, con exactamente 5 médicos, un salto sin deuda cada lunes de semana completa para romper la resonancia semanal) y `single-wheel` (predeterminada; rueda única: todas las guardias, sea laborable, sábado, domingo, festivo o festivo especial, recorren una sola rueda; los refuerzos usan las cuatro ruedas por tipo de día de `wheels`; si el grupo es múltiplo de 7, cada N días la rueda de guardias gira un puesto sin deuda para que nadie quede fijo en un día de la semana). La antigua `balanced` está retirada: la API la rechaza con 400 y los cuadrantes guardados con ella se muestran como «Equilibrado (retirado)». Común a ambas, en `backend/src/scheduling/assignment.service.ts`: `generateRotas` baraja el orden de cada grupo (`scheduling/shuffle.ts`, `RotaService` pasa `Math.random`; sin fuente aleatoria es determinista) para no empezar todos los años por el mismo médico, salvo que el equipo ya tenga el cuadrante del año anterior del mismo tipo con algún médico en común: entonces lo continúa (`scheduling/continuation.ts`: orden persistido del grupo, cada rueda arranca tras el último médico que la usó en `rota_assignments`, quien trabajó el 31 de dic descansa el 1 de ene; sin aleatoriedad, y sin arrastrar deudas ni la fase de la corrección de resonancia; automático, sin parámetro de API), genera AC, reserva los refuerzos AC por déficit mensual (`planAcRefuerzos`) y después AP; `doctorsPerDay` fijo en 1 y día de descanso. Las estrategias recorren ruedas separadas para guardias y refuerzos. La guardia es única para AC y AP en todos los años (`guardiaShiftDetails` en `scheduling/shifts.ts`) y el refuerzo tiene siempre su propio horario (`refuerzoShiftDetails`); desde 2027 (`SHIFTS_2027_FROM_YEAR`, con `usesShifts2027` marcando el corte) cambian las horas de ambos (ver «Reglas de Negocio» 5). `refuerzosForDay` da 2 refuerzos en festivos especiales, en el segundo de dos festivos consecutivos y, desde 2027, en todos los sábados. Los festivos especiales de sanidad están en `backend/src/common/sanidad-holidays.ts`.
+- **Algoritmo**: un único método de asignación, la **rueda única** (`single-wheel`, en `backend/src/scheduling/single-wheel.ts`): todas las guardias, sea laborable, sábado, domingo, festivo o festivo especial, recorren una sola rueda; los refuerzos usan cuatro ruedas por tipo de día (laborables, sábados, domingos y festivos), con punteros iniciales escalonados 0/⌊N/4⌋/⌊2N/4⌋/⌊3N/4⌋ desplazados ⌊N/2⌋, «saltar y conservar turno» y deuda contada; con exactamente 5 médicos, un salto sin deuda cada lunes de semana completa en la rueda de refuerzos de laborables rompe la resonancia semanal; si el grupo es múltiplo de 7, cada N días la rueda de guardias gira un puesto sin deuda para que nadie quede fijo en un día de la semana. Las antiguas `wheels` (cuatro ruedas de guardia por tipo de día) y `balanced` están retiradas: la API ya no tiene parámetro `strategy` (si se envía, se ignora), los cuadrantes antiguos conservan su valor en `rotas.strategy` (`ASSIGNMENT_METHOD` guarda `'single-wheel'` en los nuevos) y la interfaz muestra bajo el botón de generar «Generado con: Ruedas (retirado)» o «Generado con: Equilibrado (retirado)» sólo para ellos. Además, en `backend/src/scheduling/assignment.service.ts`: `generateRotas` baraja el orden de cada grupo (`scheduling/shuffle.ts`, `RotaService` pasa `Math.random`; sin fuente aleatoria es determinista) para no empezar todos los años por el mismo médico, salvo que el equipo ya tenga el cuadrante del año anterior del mismo tipo con algún médico en común: entonces lo continúa (`scheduling/continuation.ts`: orden persistido del grupo, cada rueda arranca tras el último médico que la usó en `rota_assignments`, quien trabajó el 31 de dic descansa el 1 de ene; sin aleatoriedad, y sin arrastrar deudas ni la fase de la corrección de resonancia; automático, sin parámetro de API), genera AC, reserva los refuerzos AC por déficit mensual (`planAcRefuerzos`) y después AP; `doctorsPerDay` fijo en 1 y día de descanso. Guardias y refuerzos recorren ruedas separadas. La guardia es única para AC y AP en todos los años (`guardiaShiftDetails` en `scheduling/shifts.ts`) y el refuerzo tiene siempre su propio horario (`refuerzoShiftDetails`); desde 2027 (`SHIFTS_2027_FROM_YEAR`, con `usesShifts2027` marcando el corte) cambian las horas de ambos (ver «Reglas de Negocio» 5). `refuerzosForDay` da 2 refuerzos en festivos especiales, en el segundo de dos festivos consecutivos y, desde 2027, en todos los sábados. Los festivos especiales de sanidad están en `backend/src/common/sanidad-holidays.ts`.
 
 ## Configuración Principal
 
@@ -77,8 +77,8 @@ Variables de entorno (backend). Sin Docker, `cp backend/.env.example backend/.en
 
 ## Pruebas
 
-- Backend: `npm test` — cobertura unitaria y e2e con Jest desde `backend/test/` (223 tests actualmente)
-- Frontend: `vitest` — 177 tests cubriendo servicios, componentes y la integración del app shell
+- Backend: `npm test` — cobertura unitaria y e2e con Jest desde `backend/test/` (192 tests actualmente)
+- Frontend: `vitest` — 171 tests cubriendo servicios, componentes y la integración del app shell
 - Todos los criterios de aceptación del PRD tienen casos de prueba correspondientes (ver docs/IMPLEMENTATION.md sección 4.4)
 - Las pruebas deben escribirse ANTES de la implementación (enfoque ATDD)
 
@@ -96,7 +96,7 @@ Una PR no se mezcla con la CI en rojo. La CI **no** sustituye a la verificación
 ## Verificación Visual (obligatoria antes del commit)
 
 Las builds y los tests no ven la aplicación. Un cambio puede compilar, pasar los
-400 tests y aun así llegar roto al usuario: texto desbordado, una cadena que
+363 tests y aun así llegar roto al usuario: texto desbordado, una cadena que
 ningún test comprueba, un mensaje que la librería genera en inglés. Por eso, todo
 cambio que toque algo visible para el usuario —frontend, o mensajes del backend,
 que llegan literalmente a la interfaz vía `extractErrorMessage` en
@@ -219,7 +219,7 @@ Estas reglas son aplicadas por el algoritmo y verificadas por las pruebas:
 - `docs/BACKEND_ARCHITECTURE_REFERENCE.md` — Módulos NestJS y estructura de persistencia
 - `docs/IMPLEMENTATION.md` — Guía para desarrolladores, jerarquía de componentes, estrategia de pruebas
 - `docs/ALGORITHM.md` — Diseño del algoritmo de asignación, restricciones y compromisos
-- `docs/visualizations/ruedas.html` — Visualización interactiva de las dos estrategias, en pestañas: «Rueda única» (predeterminada, `#rueda-unica`) y «Ruedas» (`#ruedas`). HTML autocontenido; si cambian `wheels.strategy.ts` o `single-wheel.strategy.ts`, actualizar también su copia de la lógica (`simulate`, con la opción `singleGuardiaWheel`). Se publica en GitHub Pages con `.github/workflows/pages.yml` (ver «Integración Continua»)
+- `docs/visualizations/ruedas.html` — Visualización interactiva de la rueda única (`#rueda-unica`; un `#ruedas` antiguo cae en la misma vista). HTML autocontenido; si cambia `single-wheel.ts`, actualizar también su copia de la lógica (`simulate`). Se publica en GitHub Pages con `.github/workflows/pages.yml` (ver «Integración Continua»)
 
 ## Exclusiones del Alcance PoC
 

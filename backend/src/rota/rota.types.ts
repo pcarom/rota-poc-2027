@@ -1,4 +1,4 @@
-import type { AssignmentStrategyId } from '../scheduling/strategies/assignment-strategy';
+import type { ASSIGNMENT_METHOD } from '../scheduling/single-wheel';
 
 export enum RotaType {
   AC = 'AC',
@@ -79,8 +79,8 @@ export interface RotaResponse {
   city: string;
   rota_type: RotaType;
   doctors_per_day: number;
-  // 'balanced': método retirado que pueden conservar los cuadrantes antiguos.
-  strategy: AssignmentStrategyId | 'balanced';
+  // 'wheels' y 'balanced': métodos retirados que pueden conservar los cuadrantes antiguos.
+  strategy: typeof ASSIGNMENT_METHOD | 'wheels' | 'balanced';
   generated_at: Date;
   /** Ids de los médicos del grupo en el orden (barajado) con que se generó el cuadrante */
   doctor_order: string[];

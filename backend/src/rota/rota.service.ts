@@ -11,7 +11,7 @@ import { AppConfigService } from '../config/app-config.service';
 import { formatClockTime, fromIsoDate } from '../common/date.utils';
 import { HolidaysService, classifyDay, classifyYear } from '../holidays/holidays.service';
 import { InfeasiblePoolError, generateRotas } from '../scheduling/assignment.service';
-import { DEFAULT_ASSIGNMENT_STRATEGY } from '../scheduling/strategies';
+import { ASSIGNMENT_METHOD } from '../scheduling/single-wheel';
 import { refuerzoShiftDetails } from '../scheduling/shifts';
 import { PreviousYear, PreviousYearRota } from '../scheduling/continuation';
 import { DayType, DoctorInput, RotaSchedule, ShiftRole } from '../scheduling/scheduling.types';
@@ -80,7 +80,6 @@ export class RotaService {
         request.ap_pool,
         dayClassifications,
         dayBeforeYear,
-        request.strategy ?? DEFAULT_ASSIGNMENT_STRATEGY,
         // Cada grupo sin cuadrante del año anterior se baraja para no empezar todos los años
         // por el mismo médico; los que lo tienen lo continúan y no usan la aleatoriedad.
         Math.random,
@@ -155,7 +154,7 @@ export class RotaService {
         generatedAt: new Date(),
         pool,
         doctorsPerDay: rota.doctorsPerDay,
-        strategy: rota.strategy,
+        strategy: ASSIGNMENT_METHOD,
       }),
     );
 

@@ -60,62 +60,49 @@ describe('continuePoolOrder', () => {
 describe('buildWheelContinuation', () => {
   const order = doctors('A', 'B', 'C', 'D', 'E');
 
-  it('singleGuardia apunta al siguiente a quien hizo la última guardia del año (31-12)', () => {
+  it('guardia apunta al siguiente a quien hizo la última guardia del año (31-12)', () => {
     const previous = previousRota(order, [
       guardia('2025-12-30', 'B'),
       guardia('2025-12-31', 'C'),
     ]);
     const result = buildWheelContinuation('AC', previous, previousDays, order);
-    expect(result.singleGuardia).toBe(3);
+    expect(result.guardia).toBe(3);
   });
 
-  it('asigna la última guardia a cada rueda según el tipo de día reclasificado', () => {
-    const previous = previousRota(order, [
-      guardia('2025-12-26', 'A'), // laborable
-      guardia('2025-12-29', 'B'), // laborable (última de la rueda)
-      guardia('2025-12-27', 'C'), // sábado
-      guardia('2025-12-28', 'D'), // domingo normal
-      guardia('2025-12-31', 'E'), // festivo especial (rueda de festivos)
-    ]);
-    const result = buildWheelContinuation('AC', previous, previousDays, order);
-    expect(result.guardia).toEqual({ weekday: 2, saturday: 3, sunday: 4, holiday: 0 });
-  });
-
-  it('una rueda sin turnos queda sin puntero', () => {
+  it('sin refuerzos, las ruedas de refuerzo quedan sin puntero', () => {
     const previous = previousRota(order, [guardia('2025-12-29', 'A')]);
-    const result = buildWheelContinuation('AC', previous, previousDays, order);
-    expect(result.guardia).toEqual({ weekday: 1 });
+    const result = buildWheelContinuation('AP', previous, previousDays, order);
+    expect(result.guardia).toBe(1);
     expect(result.refuerzo).toEqual({});
   });
 
   it('si el último médico se fue, apunta al siguiente superviviente', () => {
     const previous = previousRota(order, [guardia('2025-12-31', 'C')]);
     const current = doctors('A', 'B', 'D', 'E');
-    expect(buildWheelContinuation('AC', previous, previousDays, current).singleGuardia).toBe(2);
+    expect(buildWheelContinuation('AC', previous, previousDays, current).guardia).toBe(2);
   });
 
   it('si era el último superviviente, apunta al primer médico nuevo', () => {
     const previous = previousRota(order, [guardia('2025-12-31', 'E')]);
     const current = [...doctors('A', 'B', 'C', 'D'), doctor('N1'), doctor('N2')];
-    expect(buildWheelContinuation('AC', previous, previousDays, current).singleGuardia).toBe(4);
+    expect(buildWheelContinuation('AC', previous, previousDays, current).guardia).toBe(4);
   });
 
   it('si era el último superviviente y no hay nuevos, apunta a 0', () => {
     const previous = previousRota(order, [guardia('2025-12-31', 'E')]);
-    expect(buildWheelContinuation('AC', previous, previousDays, order).singleGuardia).toBe(0);
+    expect(buildWheelContinuation('AC', previous, previousDays, order).guardia).toBe(0);
   });
 
   it('si el último médico no estaba en el grupo del año anterior pero sí en el actual, apunta al siguiente', () => {
     const previous = previousRota(doctors('A', 'B', 'C'), [guardia('2025-12-31', 'N1')]);
     const current = [...doctors('A', 'B', 'C'), doctor('N1'), doctor('N2')];
-    expect(buildWheelContinuation('AC', previous, previousDays, current).singleGuardia).toBe(4);
+    expect(buildWheelContinuation('AC', previous, previousDays, current).guardia).toBe(4);
   });
 
   it('si el último médico no está en ningún grupo, la rueda queda sin puntero', () => {
     const previous = previousRota(order, [guardia('2025-12-31', 'Z')]);
     const result = buildWheelContinuation('AC', previous, previousDays, order);
-    expect(result.singleGuardia).toBeUndefined();
-    expect(result.guardia).toEqual({});
+    expect(result.guardia).toBeUndefined();
   });
 
   describe('refuerzos', () => {
@@ -129,7 +116,7 @@ describe('buildWheelContinuation', () => {
       ]);
       const result = buildWheelContinuation('AP', previous, previousDays, order);
       expect(result.refuerzo).toEqual({ weekday: 1, saturday: 2, holiday: 4 });
-      expect(result.singleGuardia).toBe(0);
+      expect(result.guardia).toBe(0);
     });
 
     it('AC: refuerzo queda vacío aunque haya filas de refuerzo', () => {

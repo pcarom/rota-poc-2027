@@ -10,7 +10,6 @@ import {
 import { generateRotas } from '../../src/scheduling/assignment.service';
 import { DayAssignment } from '../../src/scheduling/scheduling.types';
 import { shuffle } from '../../src/scheduling/shuffle';
-import { ASSIGNMENT_STRATEGY_IDS } from '../../src/scheduling/strategies';
 import { addDays } from '../../src/common/date.utils';
 import { classifyYear } from '../../src/holidays/holidays.service';
 
@@ -36,15 +35,13 @@ describe('generateRotas — barajado del grupo antes de asignar', () => {
   const firstGuardia = (schedule: DayAssignment[]) =>
     schedule[0].doctors.find((doctor) => doctor.role === 'guardia')!.doctorId;
 
-  it.each(ASSIGNMENT_STRATEGY_IDS)('sin barajar, %s empieza siempre por el mismo médico', (strategy) => {
-    const runs = [1, 2].map(() =>
-      generateRotas(YEAR_2026, AC_POOL_4, AP_POOL_17, dayClassifications, undefined, strategy),
-    );
+  it('sin barajar, empieza siempre por el mismo médico', () => {
+    const runs = [1, 2].map(() => generateRotas(YEAR_2026, AC_POOL_4, AP_POOL_17, dayClassifications));
     expect(firstGuardia(runs[0].ac.schedule)).toBe(firstGuardia(runs[1].ac.schedule));
     expect(firstGuardia(runs[0].ap.schedule)).toBe(firstGuardia(runs[1].ap.schedule));
   });
 
-  it.each(ASSIGNMENT_STRATEGY_IDS)('al barajar, %s no empieza siempre por el mismo médico', (strategy) => {
+  it('al barajar, no empieza siempre por el mismo médico', () => {
     const firstAc = new Set<string>();
     const firstAp = new Set<string>();
     for (let seed = 1; seed <= 20; seed += 1) {
@@ -54,7 +51,6 @@ describe('generateRotas — barajado del grupo antes de asignar', () => {
         AP_POOL_17,
         dayClassifications,
         undefined,
-        strategy,
         seededRandom(seed),
       );
       firstAc.add(firstGuardia(ac.schedule));
@@ -71,14 +67,13 @@ describe('generateRotas — barajado del grupo antes de asignar', () => {
       AP_POOL_17,
       dayClassifications,
       undefined,
-      'single-wheel',
       seededRandom(3),
     );
     expect(ac.stats.doctors.map((doctor) => doctor.doctorId)).toEqual(AC_POOL_4.map((doctor) => doctor.id));
     expect(ap.stats.doctors.map((doctor) => doctor.doctorId)).toEqual(AP_POOL_17.map((doctor) => doctor.id));
   });
 
-  describe.each(ASSIGNMENT_STRATEGY_IDS)('con cualquier orden, %s cumple las reglas', (strategy) => {
+  describe('con cualquier orden barajado cumple las reglas', () => {
     it.each([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])('semilla %i', (seed) => {
       const { ac, ap } = generateRotas(
         YEAR_2026,
@@ -86,7 +81,6 @@ describe('generateRotas — barajado del grupo antes de asignar', () => {
         AP_POOL_17,
         dayClassifications,
         undefined,
-        strategy,
         seededRandom(seed),
       );
 

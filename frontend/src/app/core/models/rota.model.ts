@@ -10,27 +10,15 @@ export interface DoctorRef {
   role?: ShiftRole;
 }
 
-/** Método de asignación de guardias */
-export type AssignmentStrategy = 'wheels' | 'single-wheel';
-
 /**
- * Método con el que se generó un cuadrante guardado. Además de los vigentes puede ser
- * 'balanced', el método equilibrado ya retirado, en cuadrantes antiguos.
+ * Método con el que se generó un cuadrante guardado. Todos los nuevos usan 'single-wheel';
+ * 'wheels' y 'balanced' son métodos retirados que pueden conservar los cuadrantes antiguos.
  */
-export type GeneratedStrategy = AssignmentStrategy | 'balanced';
+export type GeneratedStrategy = 'single-wheel' | 'wheels' | 'balanced';
 
-export const DEFAULT_STRATEGY: AssignmentStrategy = 'single-wheel';
-
-/** Opciones del desplegable de método de asignación */
-export const STRATEGY_OPTIONS: { value: AssignmentStrategy; label: string }[] = [
-  { value: 'single-wheel', label: 'Rueda única (predeterminado)' },
-  { value: 'wheels', label: 'Ruedas (orden estricto)' },
-];
-
-/** Etiqueta corta para mostrar el método de un cuadrante ya generado */
-export const STRATEGY_SHORT_LABELS: Record<GeneratedStrategy, string> = {
-  wheels: 'Ruedas',
-  'single-wheel': 'Rueda única',
+/** Etiqueta de los métodos retirados con que se generaron cuadrantes antiguos. */
+export const RETIRED_STRATEGY_LABELS: Record<Exclude<GeneratedStrategy, 'single-wheel'>, string> = {
+  wheels: 'Ruedas (retirado)',
   balanced: 'Equilibrado (retirado)',
 };
 
@@ -84,7 +72,6 @@ export interface GenerateRequest {
   year: number;
   ac_pool: { id: string; name: string; department: string }[];
   ap_pool: { id: string; name: string; department: string }[];
-  strategy: AssignmentStrategy;
   /** Equipo del que son los cuadrantes */
   team_id: number;
 }

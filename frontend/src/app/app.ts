@@ -15,7 +15,7 @@ import { NotificationService } from './core/services/notification.service';
 import { TeamsService } from './core/services/teams.service';
 import { extractErrorMessage } from './core/http-error';
 import { Doctor, RotaType } from './core/models/doctor.model';
-import { AssignmentStrategy, DEFAULT_STRATEGY, DayAssignment, GeneratedStrategy, DoctorStats, DoctorRef, MergedDayAssignment, ReplaceRequest, RotaResponse } from './core/models/rota.model';
+import { DayAssignment, GeneratedStrategy, DoctorStats, DoctorRef, MergedDayAssignment, ReplaceRequest, RotaResponse } from './core/models/rota.model';
 import { ReplacementEvent } from './features/calendar/day-cell.component';
 import { HttpErrorResponse } from '@angular/common/http';
 import { CdkDropListGroup } from '@angular/cdk/drag-drop';
@@ -89,10 +89,9 @@ export class App implements OnInit {
   protected readonly hasAcRota = signal(false);
   protected readonly hasApRota = signal(false);
 
-  // Método de asignación: selección global y método con el que se generó cada cuadrante
-  protected readonly selectedStrategy = signal<AssignmentStrategy>(DEFAULT_STRATEGY);
-  protected readonly acStrategy = signal<GeneratedStrategy>(DEFAULT_STRATEGY);
-  protected readonly apStrategy = signal<GeneratedStrategy>(DEFAULT_STRATEGY);
+  // Método con el que se generó cada cuadrante cargado; sólo sirve para mostrar el aviso de los métodos retirados
+  protected readonly acStrategy = signal<GeneratedStrategy>('single-wheel');
+  protected readonly apStrategy = signal<GeneratedStrategy>('single-wheel');
   protected readonly generatedStrategy = computed<GeneratedStrategy | null>(() => {
     if (this.hasAcRota()) return this.acStrategy();
     if (this.hasApRota()) return this.apStrategy();
@@ -598,7 +597,7 @@ export class App implements OnInit {
     const year = this.selectedYear();
     this.loading.set(true);
     this.isGenerating.set(true);
-    this.rotaService.generateRotas(teamId, year, acPool, apPool, this.selectedStrategy()).subscribe({
+    this.rotaService.generateRotas(teamId, year, acPool, apPool).subscribe({
       next: (rotas) => {
         for (const rota of rotas) {
           this.applyRota(rota);

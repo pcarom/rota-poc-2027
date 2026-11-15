@@ -190,69 +190,28 @@ describe('DoctorPoolComponent', () => {
       fixture.detectChanges();
     }
 
-    it('debe mostrar el selector con su etiqueta y las dos opciones exactas', () => {
+    it('no debe mostrar ningún selector de método de asignación', () => {
       setup();
-      const label: HTMLLabelElement = fixture.nativeElement.querySelector('label.strategy-label');
-      const select: HTMLSelectElement = fixture.nativeElement.querySelector('select.strategy-select');
-      expect(label.textContent?.trim()).toBe('Método de asignación');
-      expect(label.htmlFor).toBe(select.id);
-      const options = Array.from(select.options).map((o) => [o.value, o.textContent?.trim()]);
-      expect(options).toEqual([
-        ['single-wheel', 'Rueda única (predeterminado)'],
-        ['wheels', 'Ruedas (orden estricto)'],
-      ]);
+      expect(fixture.nativeElement.querySelector('select')).toBeNull();
+      expect(fixture.nativeElement.querySelector('.strategy-field')).toBeNull();
+      expect(fixture.nativeElement.textContent).not.toContain('Método de asignación');
     });
 
-    it('debe reflejar el valor de entrada strategy', () => {
-      setup({ strategy: 'wheels' });
-      const select: HTMLSelectElement = fixture.nativeElement.querySelector('.strategy-select');
-      expect(select.value).toBe('wheels');
-    });
-
-    it('debe seleccionar single-wheel por defecto', () => {
-      setup();
-      const select: HTMLSelectElement = fixture.nativeElement.querySelector('.strategy-select');
-      expect(select.value).toBe('single-wheel');
-    });
-
-    it('debe emitir strategyChange al cambiar la selección', () => {
-      setup();
-      const emitted: string[] = [];
-      component.strategyChange.subscribe((v) => emitted.push(v));
-      const select: HTMLSelectElement = fixture.nativeElement.querySelector('.strategy-select');
-      select.value = 'wheels';
-      select.dispatchEvent(new Event('change'));
-      expect(emitted).toEqual(['wheels']);
-    });
-
-    it('debe deshabilitar el selector mientras carga', () => {
-      setup({ isLoading: true });
-      const select: HTMLSelectElement = fixture.nativeElement.querySelector('.strategy-select');
-      expect(select.disabled).toBe(true);
-    });
-
-    it('debe habilitar el selector cuando no carga', () => {
-      setup({ isLoading: false });
-      const select: HTMLSelectElement = fixture.nativeElement.querySelector('.strategy-select');
-      expect(select.disabled).toBe(false);
-    });
-
-    it('debe mostrar "Generado con: Ruedas" cuando el cuadrante se generó con ruedas', () => {
+    it('debe mostrar "Generado con: Ruedas (retirado)" para un cuadrante antiguo wheels', () => {
       setup({ hasExistingRota: true, generatedStrategy: 'wheels' });
       const note = fixture.nativeElement.querySelector('.generated-with');
-      expect(note.textContent?.trim()).toBe('Generado con: Ruedas');
-    });
-
-    it('debe mostrar "Generado con: Rueda única" para single-wheel', () => {
-      setup({ hasExistingRota: true, generatedStrategy: 'single-wheel' });
-      const note = fixture.nativeElement.querySelector('.generated-with');
-      expect(note.textContent?.trim()).toBe('Generado con: Rueda única');
+      expect(note.textContent?.trim()).toBe('Generado con: Ruedas (retirado)');
     });
 
     it('debe mostrar "Generado con: Equilibrado (retirado)" para un cuadrante antiguo balanced', () => {
       setup({ hasExistingRota: true, generatedStrategy: 'balanced' });
       const note = fixture.nativeElement.querySelector('.generated-with');
       expect(note.textContent?.trim()).toBe('Generado con: Equilibrado (retirado)');
+    });
+
+    it('no debe mostrar "Generado con" para single-wheel', () => {
+      setup({ hasExistingRota: true, generatedStrategy: 'single-wheel' });
+      expect(fixture.nativeElement.querySelector('.generated-with')).toBeNull();
     });
 
     it('no debe mostrar "Generado con" sin cuadrante', () => {

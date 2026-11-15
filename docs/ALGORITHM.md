@@ -15,12 +15,12 @@ Para **AC**, cada médico debe llegar a **135h cada mes** (1.620h/año). Para **
 
 ```
 generar_rotas(año, grupo_AC, grupo_AP, clasificaciones_días):
-  1. AC: asignar la guardia AC de cada día (1 plaza/día) con la estrategia elegida
+  1. AC: asignar la guardia AC de cada día (1 plaza/día) con la rueda única
   2. Refuerzos AC (planAcRefuerzos): para cada mes y cada AC por debajo de 135h,
      reservar refuerzos el día anterior a sus guardias de ese mes hasta llegar a 135h
   3. AP: asignar cada día 1 guardia AP + (refuerzosForDay(día) − refuerzos AC reservados ese día)
-     con la estrategia elegida: primero la guardia y después los refuerzos, sin repetir médico
-     y respetando el día de descanso (`wheels` o `single-wheel`, ver más abajo)
+     con la rueda única: primero la guardia y después los refuerzos, sin repetir médico
+     y respetando el día de descanso (ver más abajo)
   4. Comprobar límites de horas (mínimo AC, máximo AP; si no se cumplen, aviso en `warnings`; no bloquea)
   5. Devolver los dos calendarios con estadísticas
 ```
@@ -83,18 +83,15 @@ Ejemplos:
 - Grupo AC de 5 → target = 8.100h > 6.627h → se genera **con aviso** (faltan horas).
 - Grupo AP de 17 (el grupo real, `assets/doctors.json`) → con la guardia AP tan larga como la de AC, capacidad ≈ 9.408h; tope = 17×425 = 7.225h < 9.408h → se genera **con aviso** (pool demasiado pequeño; hacen falta al menos 23 médicos).
 
-### 4. Elegir a los médicos: la estrategia
+### 4. Elegir a los médicos: la rueda única
 
-Quién hace cada plaza lo decide la estrategia elegida con `strategy` en `POST /rota/generate`:
+Quién hace cada plaza lo decide un único método, la **rueda única** (`single-wheel`, `scheduling/single-wheel.ts`): una única rueda de guardias para todos los días del año y cuatro ruedas por tipo de día (laborables, sábados, domingos, festivos) sólo para los refuerzos. Ver «Rueda única de guardias» y «Mecánica de las ruedas» más abajo.
 
-- **`wheels`**: ruedas por tipo de día (laborables, sábados, domingos, festivos) para las guardias y otras cuatro para los refuerzos. Ver «Estrategia de ruedas (wheels)».
-- **`single-wheel`** (predeterminada): una única rueda de guardias para todos los días del año y las cuatro ruedas por tipo de día sólo para los refuerzos. Ver «Estrategia de rueda única (single-wheel)».
+Cada día se cubren primero las guardias y después los refuerzos, y nadie hace las dos cosas el mismo día. El día de descanso se resuelve con «saltar y conservar turno» y deuda contada.
 
-Ambas cubren cada día primero las guardias y después los refuerzos, y nadie hace las dos cosas el mismo día. El día de descanso se resuelve con «saltar y conservar turno» y deuda contada.
+Los métodos anteriores están **retirados**. `POST /rota/generate` ya no tiene parámetro `strategy` (si un cliente lo envía, se ignora y se genera con la rueda única). `wheels` (cuatro ruedas por tipo de día también para las guardias) y `balanced` (round-robin equilibrado por recuento de turnos, horas y puntero deslizante) sólo sobreviven en los cuadrantes antiguos: se conservan con su valor en `rotas.strategy` y la interfaz los muestra como «Ruedas (retirado)» y «Equilibrado (retirado)». Los cuadrantes nuevos se guardan con `single-wheel`.
 
-La antigua estrategia `balanced` (round-robin equilibrado por recuento de turnos, horas y puntero deslizante) está **retirada**: `POST /rota/generate` la rechaza con 400. Los cuadrantes guardados con ella se conservan y la interfaz los muestra como «Equilibrado (retirado)».
-
-**Barajado del grupo.** Antes de asignar, `generateRotas` baraja (Fisher–Yates, `scheduling/shuffle.ts`) el orden de cada grupo, AC y AP, por separado. Como ambas estrategias recorren el grupo en el orden de la lista (los orígenes de las ruedas), sin barajar el primer médico de la lista abriría la rotación todos los años sin cuadrante previo y heredaría siempre los mismos turnos. Si el equipo ya tiene el cuadrante del año anterior del mismo tipo y comparte algún médico con el grupo actual, no se baraja: se continúa (ver «Continuidad con el año anterior»). El barajado sólo cambia el orden que ve la estrategia: las estadísticas y el grupo persistido conservan el orden recibido. `RotaService` pasa `Math.random`; sin fuente aleatoria (`random` omitido) el resultado es determinista, que es lo que usan los tests y las comparaciones de estrategias.
+**Barajado del grupo.** Antes de asignar, `generateRotas` baraja (Fisher–Yates, `scheduling/shuffle.ts`) el orden de cada grupo, AC y AP, por separado. Como las ruedas recorren el grupo en el orden de la lista (los orígenes de las ruedas), sin barajar el primer médico de la lista abriría la rotación todos los años sin cuadrante previo y heredaría siempre los mismos turnos. Si el equipo ya tiene el cuadrante del año anterior del mismo tipo y comparte algún médico con el grupo actual, no se baraja: se continúa (ver «Continuidad con el año anterior»). El barajado sólo cambia el orden que ve la asignación: las estadísticas y el grupo persistido conservan el orden recibido. `RotaService` pasa `Math.random`; sin fuente aleatoria (`random` omitido) el resultado es determinista, que es lo que usan los tests.
 
 
 ### 5. Validación de límites de horas (aviso)
@@ -143,7 +140,7 @@ Los grupos son separados y cada uno lleva su propio seguimiento de descansos, pe
 3. **Equidad de horas** — minimizar la diferencia máximo-mínimo de horas totales entre médicos
 4. **Variación de grupo** — evitar que el mismo subconjunto de médicos sea siempre asignado junto (orden barajado y ruedas)
 
-Los objetivos 2-4 los persiguen las ruedas: cada rueda reparte su tipo de turno con ±1 mientras no haya choques de descanso. Con `single-wheel` la guardia no distingue tipo de día, así que el objetivo 2 sólo se cumple de forma aproximada en las guardias (ver su apartado). El objetivo 1 se comprueba tras la generación y, si no se cumple, produce un aviso en lugar de un error.
+Los objetivos 2-4 los persiguen las ruedas: cada rueda reparte sus turnos con ±1 mientras no haya choques de descanso. La rueda de guardias no distingue tipo de día, así que el objetivo 2 sólo se cumple de forma aproximada en las guardias (ver su apartado). El objetivo 1 se comprueba tras la generación y, si no se cumple, produce un aviso en lugar de un error.
 
 ---
 
@@ -189,44 +186,44 @@ El refuerzo que hace un AC tiene este mismo horario de refuerzo.
 
 ---
 
-## Estrategia de ruedas (wheels)
+## Mecánica de las ruedas
 
-Visualización interactiva para presentarla (abrir en el navegador): [`docs/visualizations/ruedas.html`](visualizations/ruedas.html), pestaña «Ruedas» (`#ruedas`); la pestaña «Rueda única» explica la estrategia predeterminada. Simula el año 2027 con 4 y 5 médicos AC y un ejemplo AP con guardia y refuerzo.
+Visualización interactiva para presentarla (abrir en el navegador): [`docs/visualizations/ruedas.html`](visualizations/ruedas.html). Simula el año 2027 con 4 y 5 médicos AC y un ejemplo AP con guardia y refuerzo.
 
-Elegida con `strategy: "wheels"` en `POST /rota/generate`. Replica cómo se hacen hoy los cuadrantes a mano. Duraciones, `doctors_per_day`, verificación de factibilidad, estadísticas y avisos son los mismos; sólo cambia quién hace cada día. La predeterminada es `single-wheel` (ver más abajo).
+Replica cómo se hacen hoy los cuadrantes a mano. Duraciones, `doctors_per_day`, verificación de factibilidad, estadísticas y avisos no dependen del método; el método sólo decide quién hace cada día.
 
-**Ruedas.** Guardias y refuerzos tienen cada uno su juego de ruedas; las de refuerzo arrancan desplazadas ⌊N/2⌋ respecto a las de guardia y cada día se cubren primero las guardias. En cada juego hay cuatro ruedas independientes: laborables, sábados, domingos y festivos. Un día va a la rueda de festivos si su fecha es un festivo oficial (`publicHoliday`), aunque caiga en sábado o domingo; si no, a la de domingos si es domingo, a la de sábados si es sábado y a la de laborables en otro caso.
+**Ruedas.** Las guardias recorren una única rueda (ver «Rueda única de guardias»). Los refuerzos tienen cuatro ruedas independientes (laborables, sábados, domingos y festivos) con los punteros escalonados desplazados ⌊N/2⌋; cada día se cubren primero las guardias. Un día va a la rueda de festivos si su fecha es un festivo oficial (`publicHoliday`), aunque caiga en sábado o domingo; si no, a la de domingos si es domingo, a la de sábados si es sábado y a la de laborables en otro caso (`wheelForDay`).
 
-**Orden.** Cada rueda recorre el grupo en el orden de la lista recibida (ya barajada por `generateRotas`, ver «Barajado del grupo») con su propio puntero. Sin cuadrante del año anterior los punteros arrancan **escalonados**: laborables en el índice 0, sábados en ⌊N/4⌋, domingos en ⌊2N/4⌋ y festivos en ⌊3N/4⌋, con N el tamaño del grupo (`staggeredInitialPointers`). Con cuadrante previo cada rueda arranca tras el último médico que la usó el año anterior, turnos manuales incluidos (ver «Continuidad con el año anterior»); las ruedas de refuerzo continuadas no llevan el desplazamiento ⌊N/2⌋. Si todas las ruedas arrancaran desde el primer médico, la cabeza de la lista recibiría a la vez el primer turno de todas las ruedas y el +1 de cada una coincidiría sobre los mismos médicos; escalonar los orígenes reparte esa carga (ver `docs/STRATEGY_COMPARISON.md`). Cada asignación avanza el puntero de su rueda. Si un día requiere 2 (segundo refuerzo AP en festivo consecutivo) se toman los 2 siguientes de la rueda de festivos.
+**Orden.** Cada rueda (la de guardias y las de refuerzo) recorre el grupo en el orden de la lista recibida (ya barajada por `generateRotas`, ver «Barajado del grupo») con su propio puntero. Sin cuadrante del año anterior los punteros arrancan **escalonados**: laborables en el índice 0, sábados en ⌊N/4⌋, domingos en ⌊2N/4⌋ y festivos en ⌊3N/4⌋, con N el tamaño del grupo (`staggeredInitialPointers`). Con cuadrante previo cada rueda arranca tras el último médico que la usó el año anterior, turnos manuales incluidos (ver «Continuidad con el año anterior»); las ruedas de refuerzo continuadas no llevan el desplazamiento ⌊N/2⌋. Si todas las ruedas arrancaran desde el primer médico, la cabeza de la lista recibiría a la vez el primer turno de todas las ruedas y el +1 de cada una coincidiría sobre los mismos médicos; escalonar los orígenes reparte esa carga (ver `docs/STRATEGY_COMPARISON.md`). Cada asignación avanza el puntero de su rueda. Si un día requiere 2 (segundo refuerzo AP en festivo consecutivo) se toman los 2 siguientes de la rueda de festivos.
 
 **Día de descanso: saltar y conservar turno.** Un médico no está descansado si hizo guardia el día anterior (en cualquier rueda del mismo tipo de rota) o ya ha sido elegido ese mismo día. Al llenar un día se consideran primero, en orden FIFO, los médicos pendientes de esa rueda y después la rueda desde su puntero. Al médico de la rueda que no está descansado se le salta, el puntero avanza y se anota una deuda en la cola de pendientes de esa rueda. Cada salto genera una deuda, aunque el médico ya tuviera otras: la cola admite al mismo médico varias veces (FIFO de turnos debidos). Elegir a un médico desde la cola consume UNA deuda, y un médico nunca sale dos veces el mismo día aunque acumule varias.
 
-**Descanso blando.** Si en todo el grupo no hay suficientes descansados para cubrir el día, se completa con no descansados en el orden de la rueda (pendientes primero). Esos huecos no generan deuda nueva. Esta rama es inalcanzable desde `generateRota`: el tamaño mínimo del grupo (2 × pico de cobertura) garantiza siempre suficientes descansados, y sólo existe por robustez ante llamadas directas a la estrategia. Si aun así no hay suficientes médicos distintos se lanza `InfeasiblePoolError` («No hay suficientes médicos elegibles el …»).
+**Descanso blando.** Si en todo el grupo no hay suficientes descansados para cubrir el día, se completa con no descansados en el orden de la rueda (pendientes primero). Esos huecos no generan deuda nueva. Esta rama es inalcanzable desde `generateRota`: el tamaño mínimo del grupo (2 × pico de cobertura) garantiza siempre suficientes descansados, y sólo existe por robustez ante llamadas directas a `assignSingleWheel`. Si aun así no hay suficientes médicos distintos se lanza `InfeasiblePoolError` («No hay suficientes médicos elegibles el …»).
 
 **Compromisos.** El reparto por rueda es exacto (±1) mientras no haya choques; los choques se compensan con la cola de pendientes, pero no se optimiza el equilibrio global de horas, por lo que pueden aparecer avisos de horas que un método por recuento evitaría.
 
 ### Resonancia semanal y su corrección
 
-Si la cadencia semanal coincide con el tamaño del grupo, la rueda de laborables da un número exacto de vueltas por semana y el mismo médico cae siempre en el mismo día de la semana. Con **5 médicos** y semanas de 5 laborables, la rueda da una vuelta exacta cada semana: el viernes lo hace siempre el mismo médico, que además nunca está descansado el sábado. Sin corrección, con AC de 5 médicos en 2026 (festivos de la Comunidad Valenciana) un médico hace **25 viernes, 15 de ellos seguidos**, frente a 2–8 del resto.
+Si la cadencia semanal coincide con el tamaño del grupo, una rueda de laborables da un número exacto de vueltas por semana y el mismo médico cae siempre en el mismo día de la semana. Con **5 médicos** y semanas de 5 laborables, la rueda da una vuelta exacta cada semana: el viernes lo hace siempre el mismo médico, que además nunca está descansado el sábado. Sin corrección, con AC de 5 médicos en 2026 (festivos de la Comunidad Valenciana) un médico hace **25 viernes, 15 de ellos seguidos**, frente a 2–8 del resto.
 
-**Corrección** (`breakWeeklyResonance`, activada por defecto en `assignWithWheels`): si el grupo tiene **exactamente 5 médicos**, el **lunes de cada semana con 5 laborables** el puntero de la rueda de laborables avanza un puesto antes de asignar, en el juego de guardia y en el de refuerzo. Al médico saltado **no se le apunta deuda**: no es un conflicto de descanso sino un giro del orden, igual que hace a mano quien prepara el cuadrante. Se aplica todo el año, desde la primera semana completa.
+**Corrección** (`breakWeeklyResonance`, activada por defecto en `assignSingleWheel`): si el grupo tiene **exactamente 5 médicos**, el **lunes de cada semana con 5 laborables** el puntero de la rueda de refuerzos de laborables avanza un puesto antes de asignar (la rueda única de guardias no es una rueda de laborables y no se corrige). Al médico saltado **no se le apunta deuda**: no es un conflicto de descanso sino un giro del orden, igual que hace a mano quien prepara el cuadrante. Se aplica todo el año, desde la primera semana completa.
 
 - En una semana completa el saltado hace el viernes, así que nadie pierde guardias: el día de cada médico va rotando semana a semana.
 - No se salta en semanas con un festivo entre semana (ya descolocan la rueda por sí solas y saltar quitaría una guardia al saltado) ni en semanas partidas por el fin de año (`startsFullWorkWeek`).
 - Resultado en el mismo caso: viernes 9/10/11/10/8 por médico, como mucho 2 seguidos, y guardias totales 71–74 (antes 72–74).
 - Con cualquier otro tamaño de grupo el cuadrante es idéntico al de antes.
-- **Múltiplos de 5 (10, 15, 20).** La rueda de laborables da la vuelta en 2, 3 o 4 semanas y a cada médico le tocan casi siempre los mismos días laborables. Medido en 2026 y 2027 (sólo guardias), la mayor diferencia entre médicos en guardias de un mismo día de la semana es de 15–18 con 10 médicos y de 11–13 con 15, frente a 5–9 con 6, 9 u 11. No se corrige: un salto semanal quitaría guardias al saltado, y los sábados, domingos, festivos y horas no se ven afectados, porque cada tipo de día tiene su rueda.
+- **Múltiplos de 5 (10, 15, 20).** La rueda de laborables da la vuelta en 2, 3 o 4 semanas y a cada médico le tocan casi siempre los mismos días laborables. Medido en 2026 y 2027 (sólo guardias), la mayor diferencia entre médicos en guardias de un mismo día de la semana es de 15–18 con 10 médicos y de 11–13 con 15, frente a 5–9 con 6, 9 u 11. No se corrige: un salto semanal quitaría guardias al saltado, y en los refuerzos los sábados, domingos, festivos y horas no se ven afectados, porque cada tipo de día tiene su rueda.
 
 
-## Estrategia de rueda única (single-wheel)
+## Rueda única de guardias
 
-Visualización interactiva: [`docs/visualizations/ruedas.html`](visualizations/ruedas.html), pestaña «Rueda única» (la que abre por defecto), con el simulador, la comparación con «Ruedas» y el caso de los grupos de 7 médicos.
+Visualización interactiva: [`docs/visualizations/ruedas.html`](visualizations/ruedas.html), con el simulador y el caso de los grupos de 7 médicos.
 
-Es la estrategia predeterminada: se usa con `strategy: "single-wheel"` o sin `strategy` en `POST /rota/generate` (`scheduling/strategies/single-wheel.strategy.ts`). Usa la misma mecánica que `wheels` (`assignWithWheels` con `singleGuardiaWheel: true`); sólo cambia cómo se agrupan los días para las guardias.
+Es el único método de asignación (`scheduling/single-wheel.ts`, `assignSingleWheel`; se persiste como `single-wheel` en `rotas.strategy`). Usa la mecánica de ruedas descrita arriba; lo propio de la rueda única es cómo se agrupan los días para las guardias.
 
-- **Guardias: una sola rueda para todos los días.** Laborables, sábados, domingos, festivos y festivos especiales comparten un único puntero y una única cola de deuda. La rueda recorre el grupo (barajado) en orden y, sin cuadrante previo, arranca en el índice 0; con él arranca tras el último médico de guardia del año anterior (ver «Continuidad con el año anterior»). Sin choques de descanso y sin cuadrante previo, el día *i* del año lo hace el médico *i mod N*: es lo que pasa con la guardia AC, que no tiene refuerzos en la estrategia.
-- **Refuerzos: las cuatro ruedas de `wheels`.** Laborables, sábados, domingos y festivos, con los punteros escalonados (0, ⌊N/4⌋, ⌊2N/4⌋, ⌊3N/4⌋) desplazados ⌊N/2⌋, igual que en `wheels`.
-- **Choques.** Si quien toca en la rueda de guardias hizo un refuerzo el día anterior, se le salta con deuda y la cobra en el siguiente turno de la rueda («saltar y conservar turno»). Lo mismo en las ruedas de refuerzo. El descanso blando y `InfeasiblePoolError` son los de `wheels`.
+- **Guardias: una sola rueda para todos los días.** Laborables, sábados, domingos, festivos y festivos especiales comparten un único puntero y una única cola de deuda. La rueda recorre el grupo (barajado) en orden y, sin cuadrante previo, arranca en el índice 0; con él arranca tras el último médico de guardia del año anterior (ver «Continuidad con el año anterior»). Sin choques de descanso y sin cuadrante previo, el día *i* del año lo hace el médico *i mod N*: es lo que pasa con la guardia AC, que no tiene refuerzos.
+- **Refuerzos: cuatro ruedas por tipo de día.** Laborables, sábados, domingos y festivos, con los punteros escalonados (0, ⌊N/4⌋, ⌊2N/4⌋, ⌊3N/4⌋) desplazados ⌊N/2⌋.
+- **Choques.** Si quien toca en la rueda de guardias hizo un refuerzo el día anterior, se le salta con deuda y la cobra en el siguiente turno de la rueda («saltar y conservar turno»). Lo mismo en las ruedas de refuerzo. El descanso blando y `InfeasiblePoolError` son los descritos en «Mecánica de las ruedas».
 - **Resonancia semanal.** La corrección de 5 médicos sólo se aplica a la rueda de refuerzos de laborables, porque la rueda única de guardias no es una rueda de laborables.
 - **Grupos múltiplos de 7** (`breakLapResonance`, activada por defecto). Si el tamaño del grupo es múltiplo de 7, cada vuelta de la rueda dura un número exacto de semanas y cada médico caería siempre el mismo día de la semana (con 7 médicos, uno haría los 52 domingos del año). Por eso, cada N días (N = tamaño del grupo, a partir del segundo bloque) la rueda de guardias avanza un puesto **sin apuntar deuda**. El saltado hace el último día de esa vuelta, así que nadie pierde guardias, y el día de la semana de cada médico se desplaza uno por vuelta. Con cualquier otro tamaño el cuadrante no cambia.
 
@@ -245,7 +242,9 @@ Es la estrategia predeterminada: se usa con `strategy: "single-wheel"` o sin `st
 
 ---
 
-## Comparación de equidad: Rueda única frente a Ruedas
+## Comparación de equidad: Rueda única frente a Ruedas (retirado)
+
+> **Registro histórico:** «Ruedas» (`wheels`, cuatro ruedas por tipo de día también para las guardias) se retiró en noviembre de 2026 y su código ya no existe. Esta medición, hecha cuando ambos métodos convivían, se conserva como justificación de la decisión; ya no se puede reproducir y los resultados de la rueda única no han cambiado.
 
 Medición de noviembre de 2026, con la corrección de los múltiplos de 7 incluida. Son 34 casos: AC de 4 a 7 médicos (con AP de 17) y AP de 9 a 21 médicos (con AC de 4), en 2026 y 2027. Se generan con `generateRotas` (refuerzos AC incluidos) y festivos nacionales y de la Comunitat Valenciana. Cada cifra es la diferencia entre el médico que más tiene y el que menos: cuanto más baja, más justo. Barajar el grupo no cambia estas diferencias, porque los médicos de la prueba son intercambiables.
 
@@ -288,7 +287,7 @@ Medición de noviembre de 2026, con la corrección de los múltiplos de 7 inclui
 
 ### Conclusión
 
-Si justo significa repartir bien los turnos que más pesan (sábados, domingos y festivos), «Ruedas» es más equitativo, y en AP también en horas. La rueda única gana en igualar el número de guardias, en las horas totales de AC y en no repetir el mismo día laborable. Con la corrección de los múltiplos de 7 ya no tiene casos rotos, pero cada médico puede acabar con 3 a 8 domingos o festivos más que otro. Elegir el método predeterminado es una decisión de producto: depende de qué disparidad pesa más para los médicos.
+Si justo significa repartir bien los turnos que más pesan (sábados, domingos y festivos), «Ruedas» es más equitativo, y en AP también en horas. La rueda única gana en igualar el número de guardias, en las horas totales de AC y en no repetir el mismo día laborable. Con la corrección de los múltiplos de 7 ya no tiene casos rotos, pero cada médico puede acabar con 3 a 8 domingos o festivos más que otro. Quedarse con la rueda única fue una decisión de producto: depende de qué disparidad pesa más para los médicos.
 
 ---
 
@@ -308,7 +307,7 @@ Si justo significa repartir bien los turnos que más pesan (sábados, domingos y
 | `lastAssigned` | `Map<médico, fecha>` | Última fecha asignada por médico — filtrado de día de descanso |
 | `Wheel.pointer` | `int` | Posición de cada rueda en el grupo; avanza con cada asignación o salto |
 | `Wheel.pending` | `médico[]` (FIFO, admite repetidos) | Turnos debidos a médicos saltados por el día de descanso |
-| `wheelsByRole` | `{ guardia, refuerzo } → Record<rueda, Wheel>` | Juego de ruedas de cada papel; con `single-wheel`, las cuatro claves de guardia apuntan a la misma rueda |
+| `wheelsByRole` | `{ guardia, refuerzo } → Record<rueda, Wheel>` | Juego de ruedas de cada papel; las cuatro claves de guardia apuntan a la misma rueda única |
 
 Todas las estructuras se crean al inicio de cada generación. Lo único que cruza de un año a otro es lo que se lee del cuadrante persistido (ver más abajo); las deudas (`Wheel.pending`) y la fase de la corrección de resonancia no se trasladan.
 
@@ -317,7 +316,7 @@ Todas las estructuras se crean al inicio de cada generación. Lo único que cruz
 Al generar el año Y de un equipo, si existe el cuadrante de Y-1 del mismo tipo (AC o AP) y comparte algún médico con el grupo actual, Y lo continúa en lugar de barajar. Es automático: no hay parámetro en la API ni aviso. Se lee de lo persistido (`rotas.pool` y `rota_assignments`, ediciones manuales incluidas) y `scheduling/continuation.ts` lo traduce:
 
 - **Orden del grupo** (`continuePoolOrder`): los que siguen conservan el orden de Y-1, los que se fueron desaparecen y los nuevos van al final, en el orden de la petición. Un grupo continuado no usa aleatoriedad.
-- **Punteros** (`buildWheelContinuation`): cada rueda (la rueda única de guardias en `single-wheel`, las cuatro de guardias en `wheels` y las cuatro de refuerzos de AP) arranca en el médico siguiente al último que hizo un turno de esa rueda en Y-1. Si ese médico se fue, arranca en el siguiente superviviente que le seguía; si era el último de los que siguen, en el primer médico nuevo (o en el 0 si no hay nuevos). Los días de Y-1 se reclasifican para saber a qué rueda pertenecía cada turno.
+- **Punteros** (`buildWheelContinuation`): cada rueda (la rueda única de guardias y las cuatro de refuerzos de AP) arranca en el médico siguiente al último que hizo un turno de esa rueda en Y-1. Si ese médico se fue, arranca en el siguiente superviviente que le seguía; si era el último de los que siguen, en el primer médico nuevo (o en el 0 si no hay nuevos). Los días de Y-1 se reclasifican para saber a qué rueda pertenecía cada turno.
 - **Descanso del 1 de enero**: quien trabajó el 31 de diciembre de Y-1 descansa el 1 de enero de Y en su grupo, también para los refuerzos AC de `planAcRefuerzos`.
 - **No se arrastran** la deuda pendiente ni la fase de la corrección de resonancia de múltiplos de 7.
 

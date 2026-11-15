@@ -69,11 +69,6 @@ p { margin: 0; max-width: 68ch; }
 .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 
 /* Pestañas: una por método de asignación */
-.tabs { display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid var(--line); margin-bottom: -24px; }
-.tabs button { border: 0; border-bottom: 3px solid transparent; background: transparent; color: var(--muted); font: 700 1rem var(--font-display); padding: 10px 16px 12px; cursor: pointer; display: inline-flex; gap: 8px; align-items: baseline; }
-.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--navy); }
-.tabs button:hover { color: var(--ink); }
-.tabs .badge { font: 600 0.68rem var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--surface); background: var(--navy); border-radius: 999px; padding: 2px 8px; }
 
 /* Cabecera */
 header { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 32px; align-items: end; }
@@ -205,17 +200,6 @@ button:focus-visible { outline: 3px solid var(--ac); outline-offset: 2px; }
 .reso-grid .c { border-radius: 6px; padding: 6px 2px; text-align: center; font-weight: 700; background: hsl(var(--h) var(--seg-s) var(--seg-l)); color: var(--seg-ink); }
 .reso-grid .c.fri { box-shadow: inset 0 0 0 2px var(--debt); }
 .reso-grid .c.sun { box-shadow: inset 0 0 0 2px var(--w-sunday); }
-.cmp-wrap { overflow-x: auto; }
-.cmp { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 0.9rem; }
-.cmp th, .cmp td { padding: 6px 10px; text-align: right; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
-.cmp th { font: 600 0.72rem var(--font-mono); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
-.cmp th:first-child, .cmp td:first-child { text-align: left; }
-.cmp .group { text-align: center; color: var(--ink); font-family: var(--font-display); text-transform: none; letter-spacing: 0; font-size: 0.85rem; }
-.cmp .sep { border-left: 1px solid var(--line); }
-.cmp tr.range td { font-weight: 700; color: var(--ink); }
-.cmp-explain { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; align-items: start; }
-.cmp-explain p { color: var(--muted); }
-.cmp-explain p b { color: var(--ink); }
 .callout { border-left: 4px solid var(--debt); padding: 4px 0 4px 16px; display: flex; flex-direction: column; gap: 10px; }
 .callout p { color: var(--muted); }
 .callout p b { color: var(--ink); }
@@ -223,7 +207,7 @@ footer { color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--li
 footer code { font-family: var(--font-mono); font-size: 0.8rem; overflow-wrap: anywhere; }
 
 @media (max-width: 900px) {
-  header, .sim-body, .split, .reso, .reso-explain, .cmp-explain { grid-template-columns: minmax(0, 1fr); }
+  header, .sim-body, .split, .reso, .reso-explain { grid-template-columns: minmax(0, 1fr); }
   .rules { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 600px) {
@@ -240,16 +224,11 @@ footer code { font-family: var(--font-mono); font-size: 0.8rem; overflow-wrap: a
 </style>
 
 <div class="page">
-  <nav class="tabs" role="tablist" aria-label="Método de asignación">
-    <button type="button" role="tab" id="tab-single" data-mode="single" aria-controls="sim" aria-selected="true">Rueda única <span class="badge">predeterminado</span></button>
-    <button type="button" role="tab" id="tab-wheels" data-mode="wheels" aria-controls="sim" aria-selected="false">Ruedas</button>
-  </nav>
-
-  <header data-panel="single">
+  <header>
     <div>
       <p class="eyebrow">Método de asignación «Rueda única»</p>
       <h1>Una rueda para las guardias</h1>
-      <p class="lede">El método «Rueda única» es el predeterminado. Todas las guardias recorren <b>una sola rueda</b>, día tras día, sin mirar si es laborable, sábado, domingo o festivo. Los refuerzos siguen con las cuatro ruedas por tipo de día del método «Ruedas». A quien le toca y no puede, se le salta y se le guarda el turno.</p>
+      <p class="lede">Es el único método de asignación. Todas las guardias recorren <b>una sola rueda</b>, día tras día, sin mirar si es laborable, sábado, domingo o festivo. Los refuerzos usan cuatro ruedas, una por tipo de día. A quien le toca y no puede, se le salta y se le guarda el turno.</p>
     </div>
     <div class="legend-wheels" aria-label="Qué ruedas hay">
       <div class="legend-row"><span class="dot" style="background: var(--navy)"></span><b>Guardias</b><span>una sola rueda para todos los días, también festivos especiales</span></div>
@@ -260,21 +239,7 @@ footer code { font-family: var(--font-mono); font-size: 0.8rem; overflow-wrap: a
     </div>
   </header>
 
-  <header data-panel="wheels" hidden>
-    <div>
-      <p class="eyebrow">Método de asignación «Ruedas»</p>
-      <h1>Las ruedas de guardia</h1>
-      <p class="lede">El método «Ruedas» reparte las guardias igual que el cuadrante hecho a mano: cada tipo de día tiene su propia rueda con todos los médicos en el orden de la lista, y un puntero que avanza un puesto con cada guardia. A quien le toca y no puede, se le salta y se le guarda el turno.</p>
-    </div>
-    <div class="legend-wheels" aria-label="Qué días van a cada rueda">
-      <div class="legend-row"><span class="dot" style="background: var(--w-weekday)"></span><b>Laborables</b><span>lunes a viernes</span></div>
-      <div class="legend-row"><span class="dot" style="background: var(--w-saturday)"></span><b>Sábados</b><span>sábados que no son festivo</span></div>
-      <div class="legend-row"><span class="dot" style="background: var(--w-sunday)"></span><b>Domingos</b><span>domingos que no son festivo</span></div>
-      <div class="legend-row"><span class="dot" style="background: var(--w-holiday)"></span><b>Festivos</b><span>festivos oficiales y especiales, aunque caigan en fin de semana</span></div>
-    </div>
-  </header>
-
-  <section class="sim" id="sim" role="tabpanel" aria-labelledby="sim-title">
+  <section class="sim" id="sim" aria-labelledby="sim-title">
     <div class="sim-top">
       <div>
         <p class="eyebrow">Simulación paso a paso</p>
@@ -313,75 +278,30 @@ footer code { font-family: var(--font-mono); font-size: 0.8rem; overflow-wrap: a
     </div>
   </section>
 
-  <section data-panel="wheels" hidden aria-labelledby="rules-title" style="display:flex;flex-direction:column;gap:28px">
-    <div>
-      <p class="eyebrow">Las reglas</p>
-      <h2 id="rules-title">Seis reglas que explican cualquier cuadrante</h2>
-    </div>
-    <div class="split">
-      <svg id="stagger" viewBox="0 0 200 200" role="img" aria-label="Rueda de 17 médicos AP con los cuatro punteros de inicio"></svg>
-      <div>
-        <h3>Los punteros no arrancan todos en el primero</h3>
-        <p style="color:var(--muted);margin-top:8px">Si las cuatro ruedas empezaran por el primer médico de la lista, ese médico haría a la vez el primer laborable, el primer sábado, el primer domingo y el primer festivo. Cada rueda arranca un cuarto de vuelta más allá: laborables en 0, sábados en ⌊N/4⌋, domingos en ⌊2N/4⌋ y festivos en ⌊3N/4⌋. Con el grupo AP real de 17 médicos:</p>
-        <div class="start-list" id="start-list"></div>
-      </div>
-    </div>
-    <div class="rules">
-      <div class="rule"><span class="k">El orden</span><h3>La lista manda</h3><p>Cada rueda recorre los médicos <b>en el orden del grupo</b> y vuelve a empezar al llegar al final. Cada guardia avanza el puntero un puesto.</p></div>
-      <div class="rule"><span class="k">El salto</span><h3>Saltar y conservar el turno</h3><p>Si al que le toca <b>trabajó el día anterior</b> (en cualquier rueda) o ya tiene una plaza hoy, se le salta, el puntero sigue y se le apunta <b>una deuda</b> en esa rueda. Cada salto apunta una deuda nueva.</p></div>
-      <div class="rule"><span class="k">La deuda</span><h3>La deuda se cobra primero</h3><p>Antes de mirar el puntero, la rueda revisa sus deudas <b>de la más antigua a la más reciente</b>. El primero que ya haya descansado sale y cancela una de sus deudas.</p></div>
-      <div class="rule"><span class="k">Los papeles</span><h3>Guardia y refuerzo, dos juegos</h3><p>En AP la guardia y el refuerzo tienen <b>cada uno sus cuatro ruedas</b>. Las de refuerzo empiezan media vuelta más allá (⌊N/2⌋). Primero se cubre la guardia; quien la hace ya no puede ser refuerzo ese día.</p></div>
-      <div class="rule"><span class="k">El hueco</span><h3>Descanso blando</h3><p>Si no hay bastantes médicos descansados para cubrir el día, se completa con los que no han descansado, siguiendo el orden de la rueda. Esos huecos <b>no apuntan deuda</b>. Con grupos normales no ocurre.</p></div>
-      <div class="rule"><span class="k">Sin memoria</span><h3>Continúa el año anterior</h3><p>Cada rueda sigue donde acabó el año anterior; sin cuadrante previo arranca en su posición escalonada. Las deudas no pasan de un año a otro.</p></div>
-    </div>
-  </section>
-
-  <section data-panel="wheels" hidden aria-labelledby="reso-title" style="display:flex;flex-direction:column;gap:24px">
-    <div>
-      <p class="eyebrow">5 médicos · el caso especial</p>
-      <h2 id="reso-title">La resonancia: cuando la rueda va al compás de la semana</h2>
-    </div>
-    <div class="reso">
-      <figure class="reso-fig">
-        <figcaption><b>Sin corrección</b> · el viernes siempre es del mismo</figcaption>
-        <div class="reso-grid" id="reso-before" role="table" aria-label="Cinco semanas de guardias AC con cinco médicos, sin corrección"></div>
-      </figure>
-      <figure class="reso-fig">
-        <figcaption><b>Con el giro del lunes</b> · el día de cada uno rota</figcaption>
-        <div class="reso-grid" id="reso-after" role="table" aria-label="Cinco semanas de guardias AC con cinco médicos, con corrección"></div>
-      </figure>
-    </div>
-    <div class="reso-explain">
-      <div class="callout" id="reso-text"></div>
-      <div class="reso-stats" id="reso-stats"></div>
-    </div>
-  </section>
-
-  <section data-panel="single" aria-labelledby="single-rules-title" style="display:flex;flex-direction:column;gap:28px">
+  <section aria-labelledby="single-rules-title" style="display:flex;flex-direction:column;gap:28px">
     <div>
       <p class="eyebrow">Las reglas</p>
       <h2 id="single-rules-title">Seis reglas que explican cualquier cuadrante</h2>
     </div>
+    <div class="split">
+      <svg id="stagger" viewBox="0 0 200 200" role="img" aria-label="Rueda de 17 médicos AP con los cuatro punteros de inicio"></svg>
+      <div>
+        <h3>Los punteros de los refuerzos no arrancan todos en el primero</h3>
+        <p style="color:var(--muted);margin-top:8px">Si las cuatro ruedas de refuerzo empezaran por el primer médico de la lista, ese médico haría a la vez el primer refuerzo laborable, el primer sábado, el primer domingo y el primer festivo. Cada rueda arranca un cuarto de vuelta más allá: laborables en 0, sábados en ⌊N/4⌋, domingos en ⌊2N/4⌋ y festivos en ⌊3N/4⌋ (y todas, además, media vuelta más allá, ⌊N/2⌋, respecto a la rueda de guardias). Con el grupo AP real de 17 médicos, antes de ese desplazamiento:</p>
+        <div class="start-list" id="start-list"></div>
+      </div>
+    </div>
     <div class="rules">
       <div class="rule"><span class="k">Las guardias</span><h3>Una rueda para todos los días</h3><p>Laborables, sábados, domingos, festivos y festivos especiales comparten <b>un único puntero y una única cola de deuda</b>. La rueda arranca en el primero de la lista y avanza un puesto cada día.</p></div>
-      <div class="rule"><span class="k">Los refuerzos</span><h3>Cuatro ruedas, como en «Ruedas»</h3><p>Los refuerzos tienen <b>una rueda por tipo de día</b>, con los punteros escalonados (0, ⌊N/4⌋, ⌊2N/4⌋, ⌊3N/4⌋) y media vuelta más allá (⌊N/2⌋). Primero se cubre la guardia; quien la hace ya no puede ser refuerzo ese día.</p></div>
+      <div class="rule"><span class="k">Los refuerzos</span><h3>Cuatro ruedas por tipo de día</h3><p>Los refuerzos tienen <b>una rueda por tipo de día</b>, con los punteros escalonados (0, ⌊N/4⌋, ⌊2N/4⌋, ⌊3N/4⌋) y media vuelta más allá (⌊N/2⌋). Primero se cubre la guardia; quien la hace ya no puede ser refuerzo ese día.</p></div>
       <div class="rule"><span class="k">El salto</span><h3>Saltar y conservar el turno</h3><p>Si al que le toca <b>trabajó el día anterior</b> o ya tiene plaza hoy, se le salta y se le apunta <b>una deuda</b> en esa rueda. En la rueda de guardias pasa cuando alguien hizo un <b>refuerzo</b> el día antes de su turno.</p></div>
       <div class="rule"><span class="k">La deuda</span><h3>La deuda se cobra primero</h3><p>Antes de mirar el puntero, la rueda revisa sus deudas <b>de la más antigua a la más reciente</b>. El primero que ya haya descansado sale y cancela una de sus deudas.</p></div>
-      <div class="rule"><span class="k">El giro</span><h3>Grupos de 7, 14, 21: la rueda gira</h3><p>Si el grupo es <b>múltiplo de 7</b>, cada N días la rueda de guardias avanza un puesto <b>sin deuda</b>: el saltado hace el último día de esa vuelta. Así nadie queda fijo en un día de la semana. El giro del lunes de «Ruedas» (5 médicos) sólo se aplica a la rueda de refuerzos de laborables.</p></div>
+      <div class="rule"><span class="k">El giro</span><h3>Grupos de 7, 14, 21: la rueda gira</h3><p>Si el grupo es <b>múltiplo de 7</b>, cada N días la rueda de guardias avanza un puesto <b>sin deuda</b>: el saltado hace el último día de esa vuelta. Así nadie queda fijo en un día de la semana. Con 5 médicos, el mismo giro se aplica cada lunes de semana completa a la rueda de refuerzos de laborables.</p></div>
       <div class="rule"><span class="k">Sin memoria</span><h3>Continúa el año anterior</h3><p>Las ruedas continúan donde acabó el año anterior; sin cuadrante previo arrancan en su posición inicial. Las deudas no pasan de un año a otro.</p></div>
     </div>
   </section>
 
-  <section data-panel="single" aria-labelledby="cmp-title" style="display:flex;flex-direction:column;gap:24px">
-    <div>
-      <p class="eyebrow">Qué se gana y qué se pierde</p>
-      <h2 id="cmp-title">Rueda única frente a Ruedas</h2>
-    </div>
-    <div class="cmp-wrap"><table class="cmp" id="cmp"></table></div>
-    <div class="cmp-explain" id="cmp-text"></div>
-  </section>
-
-  <section data-panel="single" aria-labelledby="seven-title" style="display:flex;flex-direction:column;gap:24px">
+  <section aria-labelledby="seven-title" style="display:flex;flex-direction:column;gap:24px">
     <div>
       <p class="eyebrow">Grupos de 7, 14… · el caso especial</p>
       <h2 id="seven-title">Cuando el grupo va al compás de la semana</h2>
@@ -403,12 +323,12 @@ footer code { font-family: var(--font-mono); font-size: 0.8rem; overflow-wrap: a
   </section>
 
   <footer>
-    <p>Simulación generada en el navegador con la misma lógica que <code>backend/src/scheduling/strategies/wheels.strategy.ts</code> (<code>assignWithWheels</code>; la rueda única es su opción <code>singleGuardiaWheel</code>, que usa <code>single-wheel.strategy.ts</code>). No incluye el barajado del grupo, la continuación del año anterior (simula un año sin cuadrante previo) ni los refuerzos que hace un AC para llegar a 135 h al mes: las horas de las tablas son sólo de guardia. Horario desde 2027: guardia de lunes a jueves 17h, viernes 18h, sábado 24h (festivo o no) y domingo o festivo entre semana 23h; refuerzo de lunes a viernes 7h y de sábado, domingo o festivo 12h, con dos refuerzos todos los sábados. Festivos de 2027 en Alicante (Comunidad Valenciana) y festivos especiales de sanidad. Grupos de ejemplo tomados del grupo de médicos de la aplicación.</p>
+    <p>Simulación generada en el navegador con la misma lógica que <code>backend/src/scheduling/single-wheel.ts</code> (<code>assignSingleWheel</code>). No incluye el barajado del grupo, la continuación del año anterior (simula un año sin cuadrante previo) ni los refuerzos que hace un AC para llegar a 135 h al mes: las horas de las tablas son sólo de guardia. Horario desde 2027: guardia de lunes a jueves 17h, viernes 18h, sábado 24h (festivo o no) y domingo o festivo entre semana 23h; refuerzo de lunes a viernes 7h y de sábado, domingo o festivo 12h, con dos refuerzos todos los sábados. Festivos de 2027 en Alicante (Comunidad Valenciana) y festivos especiales de sanidad. Grupos de ejemplo tomados del grupo de médicos de la aplicación.</p>
   </footer>
 </div>
 
 <script>
-// ---------- Lógica: port de assignWithWheels con registro de eventos ----------
+// ---------- Lógica: port de assignSingleWheel con registro de eventos ----------
 const WHEELS = ['weekday', 'saturday', 'sunday', 'holiday'];
 const WHEEL_NAME = { weekday: 'Laborables', saturday: 'Sábados', sunday: 'Domingos', holiday: 'Festivos' };
 const WHEEL_VAR = { weekday: '--w-weekday', saturday: '--w-saturday', sunday: '--w-sunday', holiday: '--w-holiday' };
@@ -426,13 +346,12 @@ function startsFullWorkWeek(days, i) {
   return true;
 }
 
-function simulate(pool, days, { breakWeeklyResonance = true, singleGuardiaWheel = false, breakLapResonance = true } = {}) {
+function simulate(pool, days, { breakWeeklyResonance = true, breakLapResonance = true } = {}) {
   const N = pool.length, st = stagger(N);
   const mk = (off) => Object.fromEntries(WHEELS.map((w) => [w, { start: (st[w] + off) % N, pointer: (st[w] + off) % N, pending: [], turns: 0 }]));
   // Rueda única: las cuatro claves de guardia apuntan al mismo objeto (puntero y deuda).
   const single = () => { const w = { start: 0, pointer: 0, pending: [], turns: 0 }; return Object.fromEntries(WHEELS.map((k) => [k, w])); };
-  const wheels = { guardia: singleGuardiaWheel ? single() : mk(0), refuerzo: mk(Math.floor(N / 2)) };
-  const giroRoles = singleGuardiaWheel ? ['refuerzo'] : ['guardia', 'refuerzo'];
+  const wheels = { guardia: single(), refuerzo: mk(Math.floor(N / 2)) };
   const snap = () => JSON.parse(JSON.stringify(wheels));
   const last = new Map(), steps = [];
   const initial = snap();
@@ -441,17 +360,15 @@ function simulate(pool, days, { breakWeeklyResonance = true, singleGuardiaWheel 
     const rested = (d) => last.get(d) !== day.prev;
     const chosen = [], roles = {}, events = [];
     // Corrección de la resonancia: con 5 médicos, el lunes de cada semana de 5 laborables
-    // la rueda de laborables salta un puesto sin apuntar deuda (guardia y refuerzo).
+    // la rueda de refuerzos de laborables salta un puesto sin apuntar deuda.
     if (breakWeeklyResonance && N === 5 && startsFullWorkWeek(days, dayIndex)) {
-      for (const role of giroRoles) {
-        const w = wheels[role].weekday;
-        if (role === 'guardia' || day.refuerzos > 0) events.push({ role, kind: 'giro', doctor: pool[w.pointer] });
-        w.pointer = (w.pointer + 1) % N; w.turns++;
-      }
+      const w = wheels.refuerzo.weekday;
+      if (day.refuerzos > 0) events.push({ role: 'refuerzo', kind: 'giro', doctor: pool[w.pointer] });
+      w.pointer = (w.pointer + 1) % N; w.turns++;
     }
     // Rueda única con un grupo múltiplo de 7: cada N días la rueda de guardias gira un
     // puesto sin deuda, para que nadie quede fijo en el mismo día de la semana.
-    if (breakLapResonance && singleGuardiaWheel && N % 7 === 0 && dayIndex > 0 && dayIndex % N === 0) {
+    if (breakLapResonance && N % 7 === 0 && dayIndex > 0 && dayIndex % N === 0) {
       const w = wheels.guardia.weekday;
       events.push({ role: 'guardia', kind: 'giro', lap: true, doctor: pool[w.pointer] });
       w.pointer = (w.pointer + 1) % N; w.turns++;
@@ -523,28 +440,26 @@ const AC_5 = [...AC_POOL, 'Ruiz'];
 const AC_7 = [...AC_5, 'Blanco', 'Serrano'];
 const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
-function yearScenario(pool, withRef, month, startAt, note, label, opts = {}) {
-  const sim = simulate(pool, buildDays('2027-01-01', '2027-12-31', HOLIDAYS_2027, withRef), opts);
+function yearScenario(pool, withRef, month, startAt, note, label) {
+  const sim = simulate(pool, buildDays('2027-01-01', '2027-12-31', HOLIDAYS_2027, withRef));
   return { pool, withRef, sim, month, startAt, note, label };
 }
-const SINGLE = { singleGuardiaWheel: true };
 // Primer día del año en que la rueda de guardias salta a alguien por un refuerzo del día anterior
 const firstGuardiaSkip = (sc) => sc.sim.steps.findIndex((s) => s.events.some((e) => e.role === 'guardia' && e.kind === 'salto'));
-const MODES = { single: {}, wheels: {} };
-MODES.single = {
+const SCENARIOS = {
   ac4: yearScenario(AC_POOL, false, 3, 7,
     'Grupo AC real de 4 médicos, sólo guardias, año 2027. La rueda de guardias no distingue el tipo de día: tras el viernes viene el sábado del siguiente de la lista, y así todo el año. Sin refuerzos en la simulación no hay saltos: cada médico hace una guardia de cada cuatro días.',
-    'AC · 4 médicos', SINGLE),
+    'AC · 4 médicos'),
   ac7: yearScenario(AC_7, false, 1, 8,
     'Un grupo AC hipotético de 7 médicos, múltiplo de 7. Sin corrección, cada médico caería siempre el mismo día de la semana. Con ella, cada 7 días la rueda gira un puesto sin deuda (paso morado ↷): el saltado hace el último día de la vuelta y el día de cada uno va rotando. Ver «Cuando el grupo va al compás de la semana» más abajo.',
-    'AC · 7 médicos', SINGLE),
+    'AC · 7 médicos'),
   ap: yearScenario(AP_POOL, true, 1, 0,
     'Ejemplo AP con 8 médicos. Aguja sólida: la rueda única de guardias. Agujas discontinuas naranjas: las cuatro ruedas de refuerzo. Quien hace un refuerzo no puede hacer la guardia del día siguiente: si le toca, se le salta y conserva el turno.',
-    'AP · guardia y refuerzo', SINGLE),
+    'AP · guardia y refuerzo'),
 };
 {
   // Arrancar el escenario AP en el primer salto de guardia por un refuerzo
-  const sc = MODES.single.ap, i = firstGuardiaSkip(sc);
+  const sc = SCENARIOS.ap, i = firstGuardiaSkip(sc);
   if (i >= 0) {
     const iso = sc.sim.steps[i].day.iso;
     sc.month = Number(iso.slice(5, 7));
@@ -552,18 +467,6 @@ MODES.single = {
     sc.note += ` Ejemplo: el ${Number(iso.slice(8))} de ${MONTHS[sc.month - 1]}.`;
   }
 }
-MODES.wheels = {
-  ac4: yearScenario(AC_POOL, false, 3, 25,
-    'Grupo AC real de 4 médicos, sólo guardias, año 2027 completo. Con 4 médicos los saltos son raros: aparecen alrededor de los festivos. En marzo, a López le toca el jueves 25 y también le tocaría el viernes 26, Viernes Santo, en la rueda de festivos; como trabajó el jueves, se le salta y cubre Martínez.',
-    'AC · 4 médicos'),
-  ac5: yearScenario(AC_5, false, 2, 1,
-    'El mismo grupo AC con un quinto médico. Con 5 médicos la rueda de laborables daría una vuelta exacta por semana y cada médico caería siempre el mismo día. Para evitarlo, cada lunes de semana completa la rueda gira un puesto sin deuda (paso morado ↷). Ver «La resonancia» más abajo.',
-    'AC · 5 médicos'),
-  ap: yearScenario(AP_POOL, true, 1, 0,
-    'Ejemplo AP con 8 médicos, guardia y refuerzo. Aguja sólida: guardia. Aguja discontinua naranja: refuerzo. Los festivos especiales (1 y 6 de enero, 24, 25 y 31 de diciembre) y todos los sábados llevan dos refuerzos.',
-    'AP · guardia y refuerzo'),
-};
-
 // Días visibles y estado de partida del mes elegido (lo que dejan los meses anteriores)
 function view(sc) {
   const mm = String(sc.month).padStart(2, '0');
@@ -609,8 +512,8 @@ function needle(svg, cls, len) {
 }
 
 // ---------- Estado de la interfaz ----------
-let mode = 'single', current = 'ac4', idx = 0, timer = null;
-const scen = () => MODES[mode][current];
+let current = 'ac4', idx = 0, timer = null;
+const scen = () => SCENARIOS[current];
 const $ = (id) => document.getElementById(id);
 const fmtDate = (iso) => new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(iso + 'T00:00:00Z'));
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -643,13 +546,8 @@ function addWheel(box, { wid, roles, name, sub, color, wide }) {
 function buildWheels() {
   const sc = scen();
   const box = $('wheels'); box.innerHTML = ''; wheelEls = [];
-  if (mode === 'single') {
-    addWheel(box, { wid: 'single', roles: ['guardia'], name: 'Rueda única', sub: 'guardias · todos los días', color: 'var(--navy)', wide: true });
-    if (sc.withRef) for (const w of WHEELS) addWheel(box, { wid: w, roles: ['refuerzo'], name: WHEEL_NAME[w], sub: 'refuerzo', color: `var(${WHEEL_VAR[w]})` });
-    return;
-  }
-  const roles = sc.withRef ? ['guardia', 'refuerzo'] : ['guardia'];
-  for (const w of WHEELS) addWheel(box, { wid: w, roles, name: WHEEL_NAME[w], color: `var(${WHEEL_VAR[w]})` });
+  addWheel(box, { wid: 'single', roles: ['guardia'], name: 'Rueda única', sub: 'guardias · todos los días', color: 'var(--navy)', wide: true });
+  if (sc.withRef) for (const w of WHEELS) addWheel(box, { wid: w, roles: ['refuerzo'], name: WHEEL_NAME[w], sub: 'refuerzo', color: `var(${WHEEL_VAR[w]})` });
 }
 
 function angleOf(wstate, N) { return ((wstate.start + wstate.turns) * 360) / N + 180 / N; }
@@ -687,10 +585,8 @@ function render() {
   } else {
     const d = step.day;
     $('day-date').textContent = cap(fmtDate(d.iso));
-    const wheelPill = mode === 'single'
-      ? '<span class="pill single">Guardia: rueda única</span>' +
-        (sc.withRef ? `<span class="pill w" style="--wc: var(${WHEEL_VAR[step.wheelId]})">Refuerzo: rueda de ${WHEEL_NAME[step.wheelId].toLowerCase()}</span>` : '')
-      : `<span class="pill w" style="--wc: var(${WHEEL_VAR[step.wheelId]})">Rueda de ${WHEEL_NAME[step.wheelId].toLowerCase()}</span>`;
+    const wheelPill = '<span class="pill single">Guardia: rueda única</span>' +
+      (sc.withRef ? `<span class="pill w" style="--wc: var(${WHEEL_VAR[step.wheelId]})">Refuerzo: rueda de ${WHEEL_NAME[step.wheelId].toLowerCase()}</span>` : '');
     $('day-meta').innerHTML = wheelPill +
       (d.special ? '<span class="pill special">Festivo especial</span>' : '') +
       (sc.withRef ? `<span class="pill">${d.refuerzos} refuerzo${d.refuerzos > 1 ? 's' : ''}</span>` : '');
@@ -790,25 +686,14 @@ $('b-next').addEventListener('click', () => { stop(); go(idx + 1); });
 $('b-prev').addEventListener('click', () => { stop(); go(idx - 1); });
 $('b-first').addEventListener('click', () => { stop(); go(0); });
 $('b-play').addEventListener('click', play);
-// Pestañas: cambian el método, los escenarios y las secciones visibles
-const HASH = { single: '#rueda-unica', wheels: '#ruedas' };
-function setMode(m) {
-  mode = m;
-  document.querySelectorAll('[role="tab"]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.mode === m)));
-  $('sim').setAttribute('aria-labelledby', `tab-${m} sim-title`);
-  document.querySelectorAll('[data-panel]').forEach((p) => (p.hidden = p.dataset.panel !== m));
-  $('sc-picker').innerHTML = Object.entries(MODES[m]).map(([k, sc]) => `<button type="button" data-sc="${k}" aria-pressed="false">${sc.label}</button>`).join('');
-  document.title = m === 'single' ? 'Rueda única de guardia' : 'Las ruedas de guardia';
-  if (location.hash !== HASH[m]) history.replaceState(null, '', HASH[m]);
-  setScenario('ac4');
-}
-document.querySelectorAll('[role="tab"]').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
+const HASH = '#rueda-unica';
+$('sc-picker').innerHTML = Object.entries(SCENARIOS).map(([k, sc]) => `<button type="button" data-sc="${k}" aria-pressed="false">${sc.label}</button>`).join('');
 $('sc-picker').addEventListener('click', (e) => { const b = e.target.closest('[data-sc]'); if (b) setScenario(b.dataset.sc); });
 $('month').innerHTML = MONTHS.map((m, i) => `<option value="${i + 1}">${cap(m)}</option>`).join('');
 $('month').addEventListener('change', (e) => setScenario(current, Number(e.target.value)));
 $('cal').addEventListener('click', (e) => { const c = e.target.closest('.cell'); if (c) { stop(); go(Number(c.dataset.i)); } });
 document.addEventListener('keydown', (e) => {
-  if (e.target.closest('input,textarea,select,[role="tab"]')) return;
+  if (e.target.closest('input,textarea,select')) return;
   if (e.key === 'ArrowRight') { stop(); go(idx + 1); }
   if (e.key === 'ArrowLeft') { stop(); go(idx - 1); }
 });
@@ -827,81 +712,6 @@ document.addEventListener('keydown', (e) => {
   el('text', { x: 100, y: 100, class: 'hub-text' }, svg).textContent = 'N=17';
   $('start-list').innerHTML = WHEELS.map((w) =>
     `<div class="start-item"><span class="dot" style="background: var(${WHEEL_VAR[w]})"></span><span><b>${WHEEL_NAME[w]}</b> · puesto <span class="mono">${st[w]}</span> · Dr. ${AP_17[st[w]]}</span></div>`).join('');
-})();
-
-// ---------- Resonancia: 5 médicos AC, antes y después de la corrección ----------
-(function drawResonance() {
-  const pool = AC_5;
-  const weeks = buildDays('2027-02-01', '2027-03-07', HOLIDAYS_2027, false);
-  const grid = (id, sim) => {
-    let html = '<div></div>' + ['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((d) => `<div class="h">${d}</div>`).join('');
-    sim.steps.forEach((s, i) => {
-      if (i % 7 === 0) html += `<div class="wk">Sem. ${i / 7 + 1}</div>`;
-      const d = s.chosen[0].doctor;
-      const giro = s.events.some((e) => e.kind === 'giro');
-      html += `<div class="c ${s.day.weekday === 5 ? 'fri' : ''} ${giro ? 'giro' : ''}" style="--h:${hueOf(pool.indexOf(d), pool.length)}" title="Dr. ${d}${giro ? ' · la rueda giró un puesto este lunes' : ''}">${d.slice(0, 3)}</div>`;
-    });
-    $(id).innerHTML = html;
-  };
-  const before = simulate(pool, weeks, { breakWeeklyResonance: false });
-  grid('reso-before', before);
-  grid('reso-after', simulate(pool, weeks));
-
-  const fridays = (sim) => sim.steps.filter((s) => s.day.weekday === 5 && s.wheelId === 'weekday').map((s) => s.chosen[0].doctor);
-  const beforeFridays = fridays(before);
-  const fridayDoc = beforeFridays[0];
-
-  // Año 2027 completo, con y sin corrección
-  const year = buildDays('2027-01-01', '2027-12-31', HOLIDAYS_2027, false);
-  const stats = (opts) => {
-    const sim = simulate(pool, year, opts), fr = fridays(sim);
-    const per = Object.fromEntries(pool.map((d) => [d, { fri: 0, tot: 0 }]));
-    fr.forEach((d) => per[d].fri++);
-    sim.steps.forEach((s) => per[s.chosen[0].doctor].tot++);
-    let streak = 0, best = 0;
-    fr.forEach((d, i) => { streak = d === fr[i - 1] ? streak + 1 : 1; best = Math.max(best, streak); });
-    return { per, best };
-  };
-  const off = stats({ breakWeeklyResonance: false }), on = stats({});
-  const maxFri = (st) => Math.max(...pool.map((d) => st.per[d].fri));
-  $('reso-stats').innerHTML = `<h3>Año 2027 completo · viernes por médico</h3>
-    <table><thead><tr><th>Médico</th><th>Sin corrección</th><th>Con giro</th><th>Guardias totales (con giro)</th></tr></thead><tbody>
-    ${pool.map((d) => `<tr><td>${chip(d, pool)}</td><td class="${off.per[d].fri === maxFri(off) ? 'bad' : ''}">${off.per[d].fri}</td><td>${on.per[d].fri}</td><td>${on.per[d].tot}</td></tr>`).join('')}
-    <tr><td>Máx. viernes seguidos</td><td class="bad">${off.best}</td><td>${on.best}</td><td></td></tr></tbody></table>`;
-
-  $('reso-text').innerHTML = `
-    <h3>Con 5 médicos, el Dr. ${fridayDoc} haría todos los viernes</h3>
-    <p>Con <b>5 médicos y 5 laborables por semana</b>, la rueda de laborables da exactamente una vuelta cada semana: cada médico cae siempre el mismo día. A quien le toca el viernes le correspondería descansar el sábado, así que la rueda de sábados lo salta una y otra vez. En 2027 eso son <b>${maxFri(off)} viernes</b> para un mismo médico, <b>${off.best} seguidos</b>.</p>
-    <p><b>La corrección, como se hace a mano:</b> el lunes de cada semana con 5 laborables, la rueda de laborables gira un puesto y se salta al que le tocaba <b>sin apuntarle deuda</b> (los lunes con borde discontinuo). Ese médico hace el viernes de esa misma semana, así que nadie pierde guardias, y el día de cada uno va rotando.</p>
-    <p>No se gira en semanas con un festivo entre semana, que ya descolocan la rueda por sí solas. Sólo se aplica con exactamente 5 médicos: con 4 o 17 el cuadrante no cambia.</p>
-    <p><b>Con 10, 15 o 20 médicos</b> hay una resonancia más suave: la rueda de laborables da la vuelta en 2, 3 o 4 semanas y a cada médico le tocan casi siempre los mismos días laborables (ver la tabla). No se corrige: los sábados, domingos y festivos tienen sus propias ruedas y siguen repartidos con ±1, igual que las horas. La rueda única tiene su propia corrección para los grupos múltiplos de 7 (ver la pestaña «Rueda única»).</p>`;
-  const others = [9, 10, 11, 15].map((n) => {
-    const p = Array.from({ length: n }, (_, i) => (i < AP_17.length ? AP_17[i] : `M${i}`));
-    return { n, v: weekdaySpread(simulate(p, year), p) };
-  });
-  $('reso-stats').innerHTML += `<h3>Otros tamaños · máx. diferencia en un mismo día de la semana</h3>
-    <table><thead><tr><th>Médicos</th><th>Año 2027</th></tr></thead><tbody>
-    ${others.map((r) => `<tr><td>${r.n}${r.n % 5 ? '' : ' (múltiplo de 5)'}</td><td class="${r.v > 10 ? 'bad' : ''}">${r.v}</td></tr>`).join('')}
-    </tbody></table>`;
-})();
-
-// ---------- Rueda única frente a Ruedas: AC 4 y AP 8, año 2027 ----------
-(function drawComparison() {
-  const cats = [['saturday', 'Sáb'], ['sunday', 'Dom'], ['holiday', 'Fest']];
-  const acW = tally(MODES.wheels.ac4.sim, AC_POOL), acS = tally(MODES.single.ac4.sim, AC_POOL);
-  const range = (rows, k) => { const v = AC_POOL.map((d) => rows[d][k]); return [Math.min(...v), Math.max(...v)]; };
-  const cells = (rows, d, k, first) => `<td class="${first ? 'sep' : ''}">${rows[d][k]}</td>`;
-  const keys = cats.map(([k]) => k).concat(['hours']);
-  const head = `<thead><tr><th></th><th class="group sep" colspan="4">Rueda única</th><th class="group sep" colspan="4">Ruedas</th></tr>
-    <tr><th>Médico AC</th>${[0, 1].map(() => cats.map(([, n], i) => `<th class="${i === 0 ? 'sep' : ''}">${n}</th>`).join('') + '<th>Horas</th>').join('')}</tr></thead>`;
-  const body = AC_POOL.map((d) => `<tr><td>${chip(d, AC_POOL)}</td>${keys.map((k, i) => cells(acS, d, k, i === 0)).join('')}${keys.map((k, i) => cells(acW, d, k, i === 0)).join('')}</tr>`).join('');
-  const rangeRow = `<tr class="range"><td>Rango (mín–máx)</td>${[acS, acW].map((rows) => keys.map((k, i) => { const [a, b] = range(rows, k); return `<td class="${i === 0 ? 'sep' : ''}">${a}–${b}</td>`; }).join('')).join('')}</tr>`;
-  $('cmp').innerHTML = head + '<tbody>' + body + rangeRow + '</tbody>';
-
-  const hS = range(acS, 'hours'), hW = range(acW, 'hours'), fS = range(acS, 'holiday'), fW = range(acW, 'holiday');
-  $('cmp-text').innerHTML = `
-    <p>Guardias AC de 2027 con el grupo real de 4 médicos, en el orden de la lista. Con la <b>rueda única</b> cada médico hace una guardia de cada cuatro días, sea del tipo que sea: el número de guardias queda igualado y las horas varían entre <b>${hS[0]} y ${hS[1]} h</b> (con Ruedas, entre ${hW[0]} y ${hW[1]} h).</p>
-    <p>El precio es que <b>nadie vigila el tipo de día</b>: los sábados, domingos y festivos caen donde caigan en la rueda. Los festivos por médico van de <b>${fS[0]} a ${fS[1]}</b> con la rueda única, frente a ${fW[0]}–${fW[1]} con Ruedas, que reparte cada tipo con ±1. En AP la guardia sigue la misma lógica, y los refuerzos usan las mismas cuatro ruedas en los dos métodos.</p>`;
 })();
 
 // ---------- Rueda única con grupos múltiplos de 7: antes y después del giro ----------
@@ -925,8 +735,8 @@ function weekdaySpread(sim, pool) {
     });
     $(id).innerHTML = html;
   };
-  const before = simulate(pool, yearDays, { ...SINGLE, breakLapResonance: false });
-  const after = simulate(pool, yearDays, SINGLE);
+  const before = simulate(pool, yearDays, { breakLapResonance: false });
+  const after = simulate(pool, yearDays);
   grid('seven-before', before);
   grid('seven-after', after);
 
@@ -940,7 +750,7 @@ function weekdaySpread(sim, pool) {
   // Otros tamaños, sólo guardias, año 2027
   const sizes = [7, 8, 14, 21].map((n) => {
     const p = Array.from({ length: n }, (_, i) => (i < AP_17.length ? AP_17[i] : `M${i}`));
-    return { n, off: weekdaySpread(simulate(p, yearDays, { ...SINGLE, breakLapResonance: false }), p), on: weekdaySpread(simulate(p, yearDays, SINGLE), p) };
+    return { n, off: weekdaySpread(simulate(p, yearDays, { breakLapResonance: false }), p), on: weekdaySpread(simulate(p, yearDays), p) };
   });
   $('seven-stats').innerHTML = `<h3>Año 2027 · domingos por médico (7 médicos)</h3>
     <table><thead><tr><th>Médico</th><th>Sin corrección</th><th>Con giro</th></tr></thead><tbody>
@@ -953,13 +763,13 @@ function weekdaySpread(sim, pool) {
   $('seven-text').innerHTML = `
     <h3>Sin corrección, con 7 médicos el Dr. ${top[0]} haría los ${top[1]} domingos del año</h3>
     <p>La rueda única avanza un puesto cada día. Si el grupo tiene <b>7 médicos</b> (o 14, 21…), cada vuelta dura un número exacto de semanas y <b>cada médico cae siempre el mismo día de la semana</b>: uno hace todos los domingos y otro todos los lunes (recuadrados, los domingos).</p>
-    <p><b>La corrección:</b> al empezar cada vuelta, es decir, cada N días, la rueda gira un puesto y se salta al que le tocaba <b>sin apuntarle deuda</b> (borde discontinuo). Ese médico hace el último día de la vuelta, así que nadie pierde guardias, y el día de la semana de cada uno se desplaza uno en cada vuelta. Es la misma idea que el giro del lunes del método «Ruedas» con 5 médicos.</p>
+    <p><b>La corrección:</b> al empezar cada vuelta, es decir, cada N días, la rueda gira un puesto y se salta al que le tocaba <b>sin apuntarle deuda</b> (borde discontinuo). Ese médico hace el último día de la vuelta, así que nadie pierde guardias, y el día de la semana de cada uno se desplaza uno en cada vuelta. Es la misma idea que el giro del lunes de la rueda de refuerzos con 5 médicos.</p>
     <p>Con grupos que no son múltiplo de 7, como el AC real de 4 o el AP de 17, la rueda no gira y el cuadrante no cambia.</p>`;
 })();
 
-setMode(location.hash === HASH.wheels ? 'wheels' : 'single');
-window.addEventListener('hashchange', () => {
-  const m = location.hash === HASH.wheels ? 'wheels' : 'single';
-  if (m !== mode) setMode(m);
-});
+// Un #ruedas antiguo (el método retirado) cae en esta misma vista
+if (location.hash !== HASH) history.replaceState(null, '', HASH);
+document.title = 'Rueda única de guardia';
+setScenario('ac4');
+window.addEventListener('hashchange', () => { if (location.hash !== HASH) history.replaceState(null, '', HASH); });
 </script>

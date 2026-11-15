@@ -410,141 +410,117 @@ describe('generateRotas — AC y AP en una sola generación', () => {
     expect(rotas.ac.warnings[1]).toMatch(/^No hay hueco para más refuerzos y algunos médicos AC quedan por debajo de 135h en el mes: /);
     expect(rotas.ac.warnings[1]).toMatch(/Dr\. AC \d \(enero, faltan \d+h\)/);
   });
-
-  it('funciona con la estrategia de ruedas', () => {
-    const rotas = generateRotas(YEAR_2026, AC_POOL_4, AP_POOL_17, dayClassifications, undefined, 'wheels');
-    expect(rotas.ac.strategy).toBe('wheels');
-    expect(rotas.ap.strategy).toBe('wheels');
-    expect(rotas.ac.warnings).toEqual([]);
-    // El grupo real de 17 AP supera las 425h/año con la guardia AP corregida (ver
-    // «con el grupo real de 17 ...» más arriba); aquí sólo se comprueba que ruedas
-    // también genera el cuadrante con ese mismo aviso, no una excepción.
-    expect(rotas.ap.warnings).toHaveLength(1);
-    expect(rotas.ap.warnings[0]).toMatch(/demasiado pequeño para AP/);
-  });
 });
 
 describe('generateRotas 2026 — la guardia AP coincide con la guardia AC', () => {
   const dayClassifications = classifyYear(YEAR_2026, toHolidaySet(HOLIDAYS_2026));
 
-  it.each(['single-wheel', 'wheels'] as const)(
-    'la guardia AP tiene las mismas horas e inicio/fin que la AC: 17h laborable, 18h sábado, 23h festivo (%s)',
-    (strategy) => {
-      const { ac, ap } = generateRotas(YEAR_2026, AC_POOL_4, AP_POOL_17, dayClassifications, undefined, strategy);
-      const acByDate = new Map(ac.schedule.map((day) => [toIsoDate(day.date), day]));
-      const apByDate = new Map(ap.schedule.map((day) => [toIsoDate(day.date), day]));
+  it('la guardia AP tiene las mismas horas e inicio/fin que la AC: 17h laborable, 18h sábado, 23h festivo', () => {
+    const { ac, ap } = generateRotas(YEAR_2026, AC_POOL_4, AP_POOL_17, dayClassifications);
+    const acByDate = new Map(ac.schedule.map((day) => [toIsoDate(day.date), day]));
+    const apByDate = new Map(ap.schedule.map((day) => [toIsoDate(day.date), day]));
 
-      for (const day of dayClassifications) {
-        const date = toIsoDate(day.date);
-        const acDay = acByDate.get(date)!;
-        const apDay = apByDate.get(date)!;
+    for (const day of dayClassifications) {
+      const date = toIsoDate(day.date);
+      const acDay = acByDate.get(date)!;
+      const apDay = apByDate.get(date)!;
 
-        // La guardia AP ya no se transforma: comparte horas e inicio/fin con la AC.
-        expect(apDay.durationHours).toBe(acDay.durationHours);
-        expect(apDay.shiftStart).toBe(acDay.shiftStart);
-        expect(apDay.shiftEnd).toBe(acDay.shiftEnd);
+      // La guardia AP ya no se transforma: comparte horas e inicio/fin con la AC.
+      expect(apDay.durationHours).toBe(acDay.durationHours);
+      expect(apDay.shiftStart).toBe(acDay.shiftStart);
+      expect(apDay.shiftEnd).toBe(acDay.shiftEnd);
 
-        if (day.dayType === 'holiday') {
-          expect(acDay.durationHours).toBe(23);
-        } else if (day.dayType === 'saturday') {
-          expect(acDay.durationHours).toBe(18);
-        } else {
-          expect(acDay.durationHours).toBe(17);
-        }
+      if (day.dayType === 'holiday') {
+        expect(acDay.durationHours).toBe(23);
+      } else if (day.dayType === 'saturday') {
+        expect(acDay.durationHours).toBe(18);
+      } else {
+        expect(acDay.durationHours).toBe(17);
       }
-    },
-  );
+    }
+  });
 
-  it.each(['single-wheel', 'wheels'] as const)(
-    'los refuerzos de 2026 siguen con 7h laborable/sábado y 12h festivo, 1 por sábado normal (%s)',
-    (strategy) => {
-      const { ac, ap } = generateRotas(YEAR_2026, AC_POOL_4, AP_POOL_17, dayClassifications, undefined, strategy);
-      const acByDate = new Map(ac.schedule.map((day) => [toIsoDate(day.date), day]));
-      const apByDate = new Map(ap.schedule.map((day) => [toIsoDate(day.date), day]));
+  it('los refuerzos de 2026 siguen con 7h laborable/sábado y 12h festivo, 1 por sábado normal', () => {
+    const { ac, ap } = generateRotas(YEAR_2026, AC_POOL_4, AP_POOL_17, dayClassifications);
+    const acByDate = new Map(ac.schedule.map((day) => [toIsoDate(day.date), day]));
+    const apByDate = new Map(ap.schedule.map((day) => [toIsoDate(day.date), day]));
 
-      for (const day of [...ac.schedule, ...ap.schedule]) {
-        for (const refuerzo of day.doctors.filter((doctor) => doctor.role === 'refuerzo')) {
-          const expectedHours = day.dayType === 'holiday' ? 12 : 7;
-          expect(refuerzo.durationHours).toBe(expectedHours);
-          expect(refuerzo.shiftStart).toBe(expectedHours === 12 ? '10:00' : '15:00');
-          expect(refuerzo.shiftEnd).toBe('22:00');
-        }
+    for (const day of [...ac.schedule, ...ap.schedule]) {
+      for (const refuerzo of day.doctors.filter((doctor) => doctor.role === 'refuerzo')) {
+        const expectedHours = day.dayType === 'holiday' ? 12 : 7;
+        expect(refuerzo.durationHours).toBe(expectedHours);
+        expect(refuerzo.shiftStart).toBe(expectedHours === 12 ? '10:00' : '15:00');
+        expect(refuerzo.shiftEnd).toBe('22:00');
       }
+    }
 
-      // Sin la regla de 2027, un sábado normal (no festivo) sigue llevando un único refuerzo.
-      for (const day of dayClassifications) {
-        if (day.dayType !== 'saturday') {
-          continue;
-        }
-        const date = toIsoDate(day.date);
-        const refuerzos =
-          acByDate.get(date)!.doctors.filter((doctor) => doctor.role === 'refuerzo').length +
-          apByDate.get(date)!.doctors.filter((doctor) => doctor.role === 'refuerzo').length;
-        expect(refuerzos).toBe(1);
+    // Sin la regla de 2027, un sábado normal (no festivo) sigue llevando un único refuerzo.
+    for (const day of dayClassifications) {
+      if (day.dayType !== 'saturday') {
+        continue;
       }
-    },
-  );
+      const date = toIsoDate(day.date);
+      const refuerzos =
+        acByDate.get(date)!.doctors.filter((doctor) => doctor.role === 'refuerzo').length +
+        apByDate.get(date)!.doctors.filter((doctor) => doctor.role === 'refuerzo').length;
+      expect(refuerzos).toBe(1);
+    }
+  });
 });
 
 describe('generateRotas 2027 — horarios nuevos', () => {
   const days2027 = classifyYear(2027, new Set());
 
-  it.each(['single-wheel', 'wheels'] as const)(
-    'todos los sábados llevan 2 refuerzos de 12h entre AC y AP, nunca más de 2, y la guardia AP comparte horario con la AC (%s)',
-    (strategy) => {
-      const { ac, ap } = generateRotas(2027, AC_POOL_4, AP_POOL_17, days2027, undefined, strategy);
-      const acByDate = new Map(ac.schedule.map((day) => [toIsoDate(day.date), day]));
-      const apByDate = new Map(ap.schedule.map((day) => [toIsoDate(day.date), day]));
+  it('todos los sábados llevan 2 refuerzos de 12h entre AC y AP, nunca más de 2, y la guardia AP comparte horario con la AC', () => {
+    const { ac, ap } = generateRotas(2027, AC_POOL_4, AP_POOL_17, days2027);
+    const acByDate = new Map(ac.schedule.map((day) => [toIsoDate(day.date), day]));
+    const apByDate = new Map(ap.schedule.map((day) => [toIsoDate(day.date), day]));
 
-      for (const day of days2027) {
-        const date = toIsoDate(day.date);
-        const acDay = acByDate.get(date)!;
-        const apDay = apByDate.get(date)!;
-        const refuerzos = [...acDay.doctors, ...apDay.doctors].filter(
-          (doctor) => doctor.role === 'refuerzo',
-        );
+    for (const day of days2027) {
+      const date = toIsoDate(day.date);
+      const acDay = acByDate.get(date)!;
+      const apDay = apByDate.get(date)!;
+      const refuerzos = [...acDay.doctors, ...apDay.doctors].filter(
+        (doctor) => doctor.role === 'refuerzo',
+      );
 
-        expect(refuerzos.length).toBeLessThanOrEqual(2);
-        if (day.date.getUTCDay() === 6) {
-          expect(refuerzos).toHaveLength(2);
-          for (const refuerzo of refuerzos) {
-            expect(refuerzo.durationHours).toBe(12);
-            expect(refuerzo.shiftStart).toBe('10:00');
-            expect(refuerzo.shiftEnd).toBe('22:00');
-          }
-        }
-
-        // La guardia AP ya no se transforma y comparte horas e inicio/fin con la AC.
-        expect(apDay.durationHours).toBe(acDay.durationHours);
-        expect(apDay.shiftStart).toBe(acDay.shiftStart);
-        expect(apDay.shiftEnd).toBe(acDay.shiftEnd);
-      }
-
-      // 2027-01-08 es viernes y 2027-01-09 es sábado.
-      expect(acByDate.get('2027-01-08')!.durationHours).toBe(18);
-      expect(apByDate.get('2027-01-08')!.durationHours).toBe(18);
-      expect(acByDate.get('2027-01-09')!.durationHours).toBe(24);
-      expect(apByDate.get('2027-01-09')!.durationHours).toBe(24);
-    },
-  );
-
-  it.each(['single-wheel', 'wheels'] as const)(
-    'los refuerzos AC reservados (planAcRefuerzos) llevan el horario de refuerzo 2027 del día (%s)',
-    (strategy) => {
-      const { ac } = generateRotas(2027, AC_POOL_4, AP_POOL_17, days2027, undefined, strategy);
-      let checked = 0;
-      for (const day of ac.schedule) {
-        for (const doctor of day.doctors.filter((ref) => ref.role === 'refuerzo')) {
-          checked += 1;
-          const expectedHours = day.date.getUTCDay() === 6 || day.dayType === 'holiday' ? 12 : 7;
-          expect(doctor.durationHours).toBe(expectedHours);
-          expect(doctor.shiftStart).toBe(expectedHours === 12 ? '10:00' : '15:00');
-          expect(doctor.shiftEnd).toBe('22:00');
+      expect(refuerzos.length).toBeLessThanOrEqual(2);
+      if (day.date.getUTCDay() === 6) {
+        expect(refuerzos).toHaveLength(2);
+        for (const refuerzo of refuerzos) {
+          expect(refuerzo.durationHours).toBe(12);
+          expect(refuerzo.shiftStart).toBe('10:00');
+          expect(refuerzo.shiftEnd).toBe('22:00');
         }
       }
-      expect(checked).toBeGreaterThan(0);
-    },
-  );
+
+      // La guardia AP ya no se transforma y comparte horas e inicio/fin con la AC.
+      expect(apDay.durationHours).toBe(acDay.durationHours);
+      expect(apDay.shiftStart).toBe(acDay.shiftStart);
+      expect(apDay.shiftEnd).toBe(acDay.shiftEnd);
+    }
+
+    // 2027-01-08 es viernes y 2027-01-09 es sábado.
+    expect(acByDate.get('2027-01-08')!.durationHours).toBe(18);
+    expect(apByDate.get('2027-01-08')!.durationHours).toBe(18);
+    expect(acByDate.get('2027-01-09')!.durationHours).toBe(24);
+    expect(apByDate.get('2027-01-09')!.durationHours).toBe(24);
+  });
+
+  it('los refuerzos AC reservados (planAcRefuerzos) llevan el horario de refuerzo 2027 del día', () => {
+    const { ac } = generateRotas(2027, AC_POOL_4, AP_POOL_17, days2027);
+    let checked = 0;
+    for (const day of ac.schedule) {
+      for (const doctor of day.doctors.filter((ref) => ref.role === 'refuerzo')) {
+        checked += 1;
+        const expectedHours = day.date.getUTCDay() === 6 || day.dayType === 'holiday' ? 12 : 7;
+        expect(doctor.durationHours).toBe(expectedHours);
+        expect(doctor.shiftStart).toBe(expectedHours === 12 ? '10:00' : '15:00');
+        expect(doctor.shiftEnd).toBe('22:00');
+      }
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
 });
 
 describe('AC rota — cobertura fija y validación de pool', () => {
@@ -598,7 +574,7 @@ describe('Continuidad con el año anterior', () => {
       })),
     ),
   });
-  const firstYear = generateRotas(2025, AC_POOL_4, AP_POOL_17, days2025, undefined, 'single-wheel', seededRandom(7));
+  const firstYear = generateRotas(2025, AC_POOL_4, AP_POOL_17, days2025, undefined, seededRandom(7));
   const previousYear: PreviousYear = {
     days: days2025,
     ac: toPreviousRota(firstYear.ac),
@@ -611,13 +587,13 @@ describe('Continuidad con el año anterior', () => {
 
   it('no llama a random para el tipo que continúa el año anterior', () => {
     const random = jest.fn(() => 0.5);
-    generateRotas(YEAR_2026, AC_POOL_4, AP_POOL_17, days2026, dayBefore2026, 'single-wheel', random, previousYear);
+    generateRotas(YEAR_2026, AC_POOL_4, AP_POOL_17, days2026, dayBefore2026, random, previousYear);
     expect(random).not.toHaveBeenCalled();
   });
 
   it('con continuidad sólo para AC, el grupo AP se baraja', () => {
     const random = jest.fn(() => 0.5);
-    generateRotas(YEAR_2026, AC_POOL_4, AP_POOL_17, days2026, dayBefore2026, 'single-wheel', random, {
+    generateRotas(YEAR_2026, AC_POOL_4, AP_POOL_17, days2026, dayBefore2026, random, {
       days: days2025,
       ac: previousYear.ac,
     });
@@ -627,24 +603,24 @@ describe('Continuidad con el año anterior', () => {
   it('sin médicos en común con el año anterior se baraja como siempre', () => {
     const random = jest.fn(() => 0.5);
     const otherPool = AC_POOL_4.map((doctor) => ({ ...doctor, id: `otro-${doctor.id}` }));
-    generateRotas(YEAR_2026, otherPool, AP_POOL_17, days2026, dayBefore2026, 'single-wheel', random, {
+    generateRotas(YEAR_2026, otherPool, AP_POOL_17, days2026, dayBefore2026, random, {
       days: days2025,
       ac: previousYear.ac,
     });
     expect(random).toHaveBeenCalled();
   });
 
-  it.each(['single-wheel', 'wheels'] as const)(
-    'encadenar dos años (%s): mismo orden, la guardia AC del 1-1 es la del siguiente al del 31-12 y nadie del 31-12 repite',
-    (strategy) => {
-      const first = generateRotas(2025, AC_POOL_4, AP_POOL_17, days2025, undefined, strategy, seededRandom(7));
+  it(
+    'encadenar dos años: mismo orden, la guardia AC del 1-1 es la del siguiente al del 31-12 y nadie del 31-12 repite',
+    () => {
+      const first = generateRotas(2025, AC_POOL_4, AP_POOL_17, days2025, undefined, seededRandom(7));
       const chained: PreviousYear = {
         days: days2025,
         ac: toPreviousRota(first.ac),
         ap: toPreviousRota(first.ap),
       };
       const second = generateRotas(
-        YEAR_2026, AC_POOL_4, AP_POOL_17, days2026, dayBefore2026, strategy, seededRandom(99), chained,
+        YEAR_2026, AC_POOL_4, AP_POOL_17, days2026, dayBefore2026, seededRandom(99), chained,
       );
 
       expect(second.ac.poolOrder.map((doctor) => doctor.id)).toEqual(first.ac.poolOrder.map((doctor) => doctor.id));
@@ -656,12 +632,10 @@ describe('Continuidad con el año anterior', () => {
         expect(working.filter((id) => worked.includes(id))).toEqual([]);
       }
 
-      if (strategy === 'single-wheel') {
-        const order = first.ac.poolOrder.map((doctor) => doctor.id);
-        const last = doctorsOn(first.ac, '2025-12-31', 'guardia')[0];
-        const expected = order[(order.indexOf(last) + 1) % order.length];
-        expect(doctorsOn(second.ac, '2026-01-01', 'guardia')).toEqual([expected]);
-      }
+      const order = first.ac.poolOrder.map((doctor) => doctor.id);
+      const last = doctorsOn(first.ac, '2025-12-31', 'guardia')[0];
+      const expected = order[(order.indexOf(last) + 1) % order.length];
+      expect(doctorsOn(second.ac, '2026-01-01', 'guardia')).toEqual([expected]);
     },
   );
 });

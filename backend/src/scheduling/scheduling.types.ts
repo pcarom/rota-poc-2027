@@ -1,5 +1,3 @@
-import type { AssignmentStrategyId } from './strategies/assignment-strategy';
-
 export type RotaType = 'AC' | 'AP';
 export type DayType = 'weekday' | 'saturday' | 'holiday';
 // Guardia: la plaza principal del día de cada grupo (AC o AP). Refuerzo: plaza adicional
@@ -65,7 +63,6 @@ export interface StatsResponse {
 export interface RotaSchedule {
   year: number;
   rotaType: RotaType;
-  strategy: AssignmentStrategyId;
   doctorsPerDay: number;
   /** Grupo en el orden (barajado) con que se generó el cuadrante */
   poolOrder: DoctorInput[];
